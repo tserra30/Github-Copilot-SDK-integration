@@ -87,10 +87,12 @@ class GitHubCopilotApiClient:
         if headers is None:
             headers = {}
 
-        headers.update({
-            "Authorization": f"Bearer {self._api_token}",
-            "Content-Type": "application/json",
-        })
+        headers.update(
+            {
+                "Authorization": f"Bearer {self._api_token}",
+                "Content-Type": "application/json",
+            }
+        )
 
         try:
             async with async_timeout.timeout(30):

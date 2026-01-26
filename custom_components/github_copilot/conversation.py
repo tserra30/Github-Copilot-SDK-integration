@@ -57,10 +57,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             self.history[conversation_id] = []
 
         # Add user message to history
-        self.history[conversation_id].append({
-            "role": "user",
-            "content": user_input.text,
-        })
+        self.history[conversation_id].append(
+            {
+                "role": "user",
+                "content": user_input.text,
+            }
+        )
 
         # Keep only last messages to avoid token limits
         if len(self.history[conversation_id]) > MAX_HISTORY_MESSAGES:
@@ -83,10 +85,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             )
 
             # Add assistant response to history
-            self.history[conversation_id].append({
-                "role": "assistant",
-                "content": assistant_message,
-            })
+            self.history[conversation_id].append(
+                {
+                    "role": "assistant",
+                    "content": assistant_message,
+                }
+            )
 
             # Create intent response
             intent_response = intent.IntentResponse(language=user_input.language)
