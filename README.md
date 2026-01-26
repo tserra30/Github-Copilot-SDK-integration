@@ -1,46 +1,117 @@
-# Notice
+# GitHub Copilot Home Assistant Integration
 
-The component and platforms in this repository are not meant to be used by a
-user, but as a "blueprint" that custom component developers can build
-upon, to make more awesome stuff.
+[![GitHub Release][releases-shield]][releases]
+[![GitHub Activity][commits-shield]][commits]
+[![License][license-shield]](LICENSE)
+[![hacs][hacsbadge]][hacs]
 
-HAVE FUN! 😎
+_Integration to bring GitHub Copilot AI capabilities to Home Assistant._
 
-## Why?
+**This integration provides a conversation agent powered by GitHub Copilot, enabling voice assistants and AI-powered tasks similar to OpenAI, Claude, and Gemini integrations.**
 
-This is simple, by having custom_components look (README + structure) the same
-it is easier for developers to help each other and for users to start using them.
+## Features
 
-If you are a developer and you want to add things to this "blueprint" that you think more
-developers will have use for, please open a PR to add it :)
+- 🤖 **Conversation Agent** - Use GitHub Copilot as an AI conversation agent
+- 🎤 **Voice Assistant Support** - Works with Home Assistant's voice pipeline
+- 🔧 **Configurable Models** - Support for GPT-4, GPT-4 Turbo, and GPT-3.5 Turbo
+- ⚙️ **Customizable Parameters** - Adjust temperature, max tokens, and more
+- 💬 **Context Preservation** - Maintains conversation history within sessions
 
-## What?
+## Installation
 
-This repository contains multiple files, here is a overview:
+### HACS (Recommended)
 
-File | Purpose | Documentation
--- | -- | --
-`.devcontainer.json` | Used for development/testing with Visual Studio Code. | [Documentation](https://code.visualstudio.com/docs/remote/containers)
-`.github/ISSUE_TEMPLATE/*.yml` | Templates for the issue tracker | [Documentation](https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository)
-`custom_components/integration_blueprint/*` | Integration files, this is where everything happens. | [Documentation](https://developers.home-assistant.io/docs/creating_component_index)
-`CONTRIBUTING.md` | Guidelines on how to contribute. | [Documentation](https://help.github.com/en/github/building-a-strong-community/setting-guidelines-for-repository-contributors)
-`LICENSE` | The license file for the project. | [Documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/licensing-a-repository)
-`README.md` | The file you are reading now, should contain info about the integration, installation and configuration instructions. | [Documentation](https://help.github.com/en/github/writing-on-github/basic-writing-and-formatting-syntax)
-`requirements.txt` | Python packages used for development/lint/testing this integration. | [Documentation](https://pip.pypa.io/en/stable/user_guide/#requirements-files)
+1. Open HACS in Home Assistant
+2. Go to "Integrations"
+3. Click the "+" button
+4. Search for "GitHub Copilot"
+5. Click "Install"
+6. Restart Home Assistant
 
-## How?
+### Manual Installation
 
-1. Create a new repository in GitHub, using this repository as a template by clicking the "Use this template" button in the GitHub UI.
-1. Open your new repository in Visual Studio Code devcontainer (Preferably with the "`Dev Containers: Clone Repository in Named Container Volume...`" option).
-1. Rename all instances of the `integration_blueprint` to `custom_components/<your_integration_domain>` (e.g. `custom_components/awesome_integration`).
-1. Rename all instances of the `Integration Blueprint` to `<Your Integration Name>` (e.g. `Awesome Integration`).
-1. Run the `scripts/develop` to start HA and test out your new integration.
+1. Copy the `custom_components/github_copilot` directory to your Home Assistant `custom_components` directory
+2. Restart Home Assistant
 
-## Next steps
+## Configuration
 
-These are some next steps you may want to look into:
-- Add tests to your integration, [`pytest-homeassistant-custom-component`](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) can help you get started.
-- Add brand images (logo/icon) to https://github.com/home-assistant/brands.
-- Create your first release.
-- Share your integration on the [Home Assistant Forum](https://community.home-assistant.io/).
-- Submit your integration to [HACS](https://hacs.xyz/docs/publish/start).
+### Setup via UI
+
+1. Go to **Settings** → **Devices & Services**
+2. Click **Add Integration**
+3. Search for **GitHub Copilot**
+4. Enter your GitHub Copilot API token
+5. Configure optional settings:
+   - **Model**: Select GPT-4, GPT-4 Turbo, or GPT-3.5 Turbo
+   - **Maximum Tokens**: Response length (100-4000)
+   - **Temperature**: Creativity level (0-2)
+
+### Getting an API Token
+
+To use this integration, you need a GitHub Copilot API token:
+1. Ensure you have an active GitHub Copilot subscription
+2. Generate an API token from your GitHub settings
+3. Keep the token secure
+
+## Usage
+
+### As a Conversation Agent
+
+Once configured, you can:
+
+1. Select GitHub Copilot as a conversation agent in voice assistants
+2. Use it in automations via the `conversation.process` service
+3. Chat with it through the Home Assistant UI
+
+### Example Automation
+
+```yaml
+automation:
+  - alias: "Morning briefing with Copilot"
+    trigger:
+      - platform: time
+        at: "07:00:00"
+    action:
+      - service: conversation.process
+        data:
+          text: "Good morning! What should I know today?"
+          agent_id: conversation.github_copilot
+```
+
+## Documentation
+
+For detailed documentation, see [agents.md](agents.md)
+
+## Troubleshooting
+
+- **Authentication errors**: Verify your API token is valid
+- **Connection issues**: Check internet connectivity and GitHub API status
+- **Slow responses**: Try reducing max_tokens or using a faster model
+
+For more help, see the [agents.md](agents.md) documentation or [open an issue][issues].
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built on Home Assistant's conversation framework
+- Based on the integration blueprint by [@ludeeus](https://github.com/ludeeus)
+
+---
+
+**Note**: This integration is not officially affiliated with GitHub or Microsoft.
+
+[commits-shield]: https://img.shields.io/github/commit-activity/y/tserra30/Github-Copilot-SDK-integration.svg?style=for-the-badge
+[commits]: https://github.com/tserra30/Github-Copilot-SDK-integration/commits/main
+[hacs]: https://github.com/hacs/integration
+[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/tserra30/Github-Copilot-SDK-integration.svg?style=for-the-badge
+[releases-shield]: https://img.shields.io/github/release/tserra30/Github-Copilot-SDK-integration.svg?style=for-the-badge
+[releases]: https://github.com/tserra30/Github-Copilot-SDK-integration/releases
+[issues]: https://github.com/tserra30/Github-Copilot-SDK-integration/issues

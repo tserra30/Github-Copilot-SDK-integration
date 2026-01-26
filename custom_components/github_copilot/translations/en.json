@@ -1,0 +1,40 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Configure GitHub Copilot integration. You'll need a GitHub Copilot API token. For more information, visit: https://github.com/tserra30/Github-Copilot-SDK-integration",
+                "data": {
+                    "api_token": "API Token",
+                    "model": "Model",
+                    "max_tokens": "Maximum Tokens",
+                    "temperature": "Temperature (Creativity)"
+                },
+                "data_description": {
+                    "api_token": "Your GitHub Copilot API token",
+                    "model": "The AI model to use for conversations",
+                    "max_tokens": "Maximum length of responses (100-4000)",
+                    "temperature": "Controls randomness in responses (0=focused, 2=creative)"
+                }
+            }
+        },
+        "error": {
+            "auth": "Invalid API token. Please check your credentials.",
+            "connection": "Unable to connect to GitHub Copilot API.",
+            "unknown": "An unknown error occurred."
+        },
+        "abort": {
+            "already_configured": "GitHub Copilot is already configured."
+        }
+    },
+    "options": {
+        "step": {
+            "user": {
+                "data": {
+                    "model": "Model",
+                    "max_tokens": "Maximum Tokens",
+                    "temperature": "Temperature (Creativity)"
+                }
+            }
+        }
+    }
+}
