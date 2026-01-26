@@ -42,7 +42,7 @@ class GitHubCopilotApiClient:
         self,
         api_token: str,
         session: aiohttp.ClientSession,
-        model: str = "gpt-4",
+        model: str = "gpt-4o",
         max_tokens: int = 1000,
         temperature: float = 0.7,
     ) -> None:

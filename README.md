@@ -13,7 +13,7 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant._
 
 - 🤖 **Conversation Agent** - Use GitHub Copilot as an AI conversation agent
 - 🎤 **Voice Assistant Support** - Works with Home Assistant's voice pipeline
-- 🔧 **Configurable Models** - Support for GPT-4, GPT-4 Turbo, and GPT-3.5 Turbo
+- 🔧 **Configurable Models** - Support for GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, and Claude 3.7 Sonnet
 - ⚙️ **Customizable Parameters** - Adjust temperature, max tokens, and more
 - 💬 **Context Preservation** - Maintains conversation history within sessions
 
@@ -42,7 +42,7 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant._
 3. Search for **GitHub Copilot**
 4. Enter your GitHub Copilot API token
 5. Configure optional settings:
-   - **Model**: Select GPT-4, GPT-4 Turbo, or GPT-3.5 Turbo
+   - **Model**: Select from GPT-4o (default), GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, or Claude 3.7 Sonnet
    - **Maximum Tokens**: Response length (100-4000)
    - **Temperature**: Creativity level (0-2)
 
