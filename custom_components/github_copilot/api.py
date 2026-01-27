@@ -28,10 +28,14 @@ class GitHubCopilotApiClientAuthenticationError(
 def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
     """Verify that the response is valid."""
     if response.status in (401, 403):
-        msg = "Invalid API token"
-        raise GitHubCopilotApiClientAuthenticationError(
-            msg,
-        )
+        msg = f"Authentication failed (HTTP {response.status}): Invalid API token"
+        raise GitHubCopilotApiClientAuthenticationError(msg)
+    if response.status == 404:  # noqa: PLR2004
+        msg = f"API endpoint not found (HTTP {response.status})"
+        raise GitHubCopilotApiClientCommunicationError(msg)
+    if response.status >= 400:  # noqa: PLR2004
+        msg = f"API request failed with HTTP {response.status}"
+        raise GitHubCopilotApiClientError(msg)
     response.raise_for_status()
 
 
