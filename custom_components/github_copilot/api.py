@@ -25,7 +25,7 @@ class GitHubCopilotApiClientAuthenticationError(
     """Exception to indicate an authentication error."""
 
 
-def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
+async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
     """Verify that the response is valid."""
     if response.status in (401, 403):
         msg = f"Authentication failed (HTTP {response.status}): Invalid API token"
@@ -33,6 +33,15 @@ def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
     if response.status == 404:  # noqa: PLR2004
         msg = f"API endpoint not found (HTTP {response.status})"
         raise GitHubCopilotApiClientCommunicationError(msg)
+    if response.status == 400:  # noqa: PLR2004
+        # Try to get more details from the response body for Bad Request errors
+        try:
+            error_body = await response.json()
+            error_detail = error_body.get("error", {}).get("message", "Bad Request")
+        except Exception:  # noqa: BLE001
+            error_detail = "Bad Request - invalid request format or parameters"
+        msg = f"API request failed (HTTP 400): {error_detail}"
+        raise GitHubCopilotApiClientError(msg)
     if response.status >= 400:  # noqa: PLR2004
         msg = f"API request failed with HTTP {response.status}"
         raise GitHubCopilotApiClientError(msg)
@@ -72,13 +81,20 @@ class GitHubCopilotApiClient:
         )
 
     async def async_test_connection(self) -> bool:
-        """Test the API connection."""
-        try:
-            await self.async_chat([{"role": "user", "content": "Hello"}])
-        except GitHubCopilotApiClientError:
-            return False
-        else:
-            return True
+        """
+        Test the API connection.
+
+        Raises:
+            GitHubCopilotApiClientAuthenticationError: If authentication fails.
+            GitHubCopilotApiClientCommunicationError: If connection fails.
+            GitHubCopilotApiClientError: For other API errors.
+
+        Returns:
+            True if connection is successful.
+
+        """
+        await self.async_chat([{"role": "user", "content": "Hello"}])
+        return True
 
     async def _api_wrapper(
         self,
@@ -106,9 +122,12 @@ class GitHubCopilotApiClient:
                     headers=headers,
                     json=data,
                 )
-                _verify_response_or_raise(response)
+                await _verify_response_or_raise(response)
                 return await response.json()
 
+        except GitHubCopilotApiClientError:
+            # Re-raise our own exceptions without wrapping them
+            raise
         except TimeoutError as exception:
             msg = f"Timeout error fetching information - {exception}"
             raise GitHubCopilotApiClientCommunicationError(
