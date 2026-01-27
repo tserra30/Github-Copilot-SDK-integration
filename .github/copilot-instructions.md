@@ -95,35 +95,59 @@ custom_components/github_copilot/
 ```python
 from __future__ import annotations
 
-async def fetch_data(self) -> dict:
-    """Fetch data from API."""
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            return await response.json()
+# API client uses a shared session passed to the constructor
+class GitHubCopilotApiClient:
+    def __init__(self, api_token: str, session: aiohttp.ClientSession, ...) -> None:
+        self._session = session
+        
+    async def _api_wrapper(self, method: str, url: str, data: dict | None = None) -> Any:
+        """Get information from the API."""
+        try:
+            async with async_timeout.timeout(30):
+                response = await self._session.request(method=method, url=url, json=data)
+                return await response.json()
+        except TimeoutError as exception:
+            raise GitHubCopilotApiClientCommunicationError(...) from exception
 ```
 
 ### Error Handling
 ```python
-from homeassistant.exceptions import HomeAssistantError
+from .api import (
+    GitHubCopilotApiClientError,
+    GitHubCopilotApiClientAuthenticationError,
+    GitHubCopilotApiClientCommunicationError,
+)
 
 try:
     result = await api_call()
-except aiohttp.ClientError as err:
-    raise HomeAssistantError(f"Connection failed: {err}") from err
+except GitHubCopilotApiClientAuthenticationError as exception:
+    LOGGER.warning(exception)
+    errors["base"] = "auth"
+except GitHubCopilotApiClientCommunicationError as exception:
+    LOGGER.error(exception)
+    errors["base"] = "connection"
+except GitHubCopilotApiClientError as exception:
+    LOGGER.exception(exception)
+    errors["base"] = "unknown"
 ```
 
 ### Configuration Validation
 ```python
 async def async_step_user(self, user_input=None):
     """Handle user step."""
-    errors = {}
+    _errors = {}
     if user_input is not None:
         try:
-            await self._test_credentials(user_input[CONF_API_TOKEN])
-        except InvalidAuth:
-            errors["base"] = "invalid_auth"
-        except CannotConnect:
-            errors["base"] = "cannot_connect"
+            await self._test_credentials(
+                api_token=user_input[CONF_API_TOKEN],
+                model=user_input.get(CONF_MODEL, DEFAULT_MODEL),
+            )
+        except GitHubCopilotApiClientAuthenticationError as exception:
+            LOGGER.warning(exception)
+            _errors["base"] = "auth"
+        except GitHubCopilotApiClientCommunicationError as exception:
+            LOGGER.error(exception)
+            _errors["base"] = "connection"
 ```
 
 ## Important Notes
