@@ -81,7 +81,18 @@ class GitHubCopilotApiClient:
         )
 
     async def async_test_connection(self) -> bool:
-        """Test the API connection. Returns True if successful, raises on failure."""
+        """
+        Test the API connection.
+
+        Raises:
+            GitHubCopilotApiClientAuthenticationError: If authentication fails.
+            GitHubCopilotApiClientCommunicationError: If connection fails.
+            GitHubCopilotApiClientError: For other API errors.
+
+        Returns:
+            True if connection is successful.
+
+        """
         await self.async_chat([{"role": "user", "content": "Hello"}])
         return True
 
