@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/tserra30/Github-Copilot-SDK-integration/issues",
   "version": "1.0.0",
   "requirements": [],
-  "dependencies": []
+  "dependencies": ["conversation"]
 }
