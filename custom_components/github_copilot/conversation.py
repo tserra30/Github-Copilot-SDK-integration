@@ -74,15 +74,39 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             # Call GitHub Copilot API
             response = await client.async_chat(self.history[conversation_id])
 
-            # Extract response text
-            assistant_message = (
-                response.get("choices", [{}])[0]
-                .get("message", {})
-                .get(
-                    "content",
-                    "I apologize, but I couldn't generate a response.",
+            # Check for error response from API
+            if "error" in response:
+                error_msg = response.get("error", {}).get("message", "Unknown error")
+                LOGGER.error("API error response: %s", error_msg)
+                # Remove the failed user message from history
+                self.history[conversation_id].pop()
+                intent_response = intent.IntentResponse(language=user_input.language)
+                intent_response.async_set_speech(f"API Error: {error_msg}")
+                return conversation.ConversationResult(
+                    response=intent_response,
+                    conversation_id=conversation_id,
                 )
-            )
+
+            # Extract response text - handle various response formats
+            choices = response.get("choices", [])
+            if not choices:
+                LOGGER.warning("No choices in API response: %s", response)
+                # Remove the failed user message from history
+                self.history[conversation_id].pop()
+                intent_response = intent.IntentResponse(language=user_input.language)
+                intent_response.async_set_speech(
+                    "No response received from the API. Please try again."
+                )
+                return conversation.ConversationResult(
+                    response=intent_response,
+                    conversation_id=conversation_id,
+                )
+
+            assistant_message = choices[0].get("message", {}).get("content", "")
+
+            if not assistant_message:
+                LOGGER.warning("Empty content in API response: %s", response)
+                assistant_message = "I received an empty response. Please try again."
 
             # Add assistant response to history
             self.history[conversation_id].append(
@@ -103,10 +127,11 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
 
         except Exception as err:  # noqa: BLE001
             LOGGER.exception("Error processing conversation: %s", err)
+            # Remove the failed user message from history to avoid corrupting history
+            if self.history.get(conversation_id):
+                self.history[conversation_id].pop()
             intent_response = intent.IntentResponse(language=user_input.language)
-            intent_response.async_set_speech(
-                "I apologize, but I encountered an error processing your request."
-            )
+            intent_response.async_set_speech(f"Error: {type(err).__name__}: {err!s}")
             return conversation.ConversationResult(
                 response=intent_response,
                 conversation_id=conversation_id,

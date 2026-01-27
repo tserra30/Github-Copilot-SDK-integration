@@ -5,10 +5,10 @@
     "@tserra30"
   ],
   "config_flow": true,
+  "dependencies": ["conversation"],
   "documentation": "https://github.com/tserra30/Github-Copilot-SDK-integration",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/tserra30/Github-Copilot-SDK-integration/issues",
-  "version": "1.0.0",
   "requirements": [],
-  "dependencies": ["conversation"]
+  "version": "1.0.0"
 }
