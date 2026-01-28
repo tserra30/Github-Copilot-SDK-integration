@@ -32,5 +32,9 @@ SUPPORTED_MODELS = [
     "claude-3.7-sonnet",
 ]
 
+# Reasoning models that don't support temperature parameter
+# and use max_completion_tokens instead of max_tokens
+REASONING_MODELS = {"o1", "o1-mini", "o3-mini"}
+
 # Conversation constants
 MAX_HISTORY_MESSAGES = 10

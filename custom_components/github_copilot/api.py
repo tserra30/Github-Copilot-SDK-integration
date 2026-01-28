@@ -8,6 +8,8 @@ from typing import Any
 import aiohttp
 import async_timeout
 
+from .const import REASONING_MODELS
+
 
 class GitHubCopilotApiClientError(Exception):
     """Exception to indicate a general API error."""
@@ -69,15 +71,24 @@ class GitHubCopilotApiClient:
 
     async def async_chat(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         """Send chat messages to GitHub Copilot API."""
+        # Build request data based on model type
+        data: dict[str, Any] = {
+            "messages": messages,
+            "model": self._model,
+        }
+
+        # Reasoning models (o1, o1-mini, o3-mini) don't support temperature
+        # and use max_completion_tokens instead of max_tokens
+        if self._model in REASONING_MODELS:
+            data["max_completion_tokens"] = self._max_tokens
+        else:
+            data["max_tokens"] = self._max_tokens
+            data["temperature"] = self._temperature
+
         return await self._api_wrapper(
             method="post",
             url=self._base_url,
-            data={
-                "messages": messages,
-                "model": self._model,
-                "max_tokens": self._max_tokens,
-                "temperature": self._temperature,
-            },
+            data=data,
         )
 
     async def async_test_connection(self) -> bool:
