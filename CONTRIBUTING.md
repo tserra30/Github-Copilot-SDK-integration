@@ -83,9 +83,9 @@ Before submitting a PR:
 4. Check error handling
 5. Ensure all linting passes
 
-## Any Contributions You Make Will Be Under the MIT License
+## Any Contributions You Make Will Be Under the GNU GPLv3
 
-In short, when you submit code changes, your submissions are understood to be under the same [MIT License](http://choosealicense.com/licenses/mit/) that covers the project.
+In short, when you submit code changes, your submissions are understood to be under the same [GNU GPLv3](https://choosealicense.com/licenses/gpl-3.0/) that covers the project.
 
 ## Report Bugs Using GitHub's [Issues](../../issues)
 
@@ -126,4 +126,4 @@ When contributing:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the GNU GPLv3.
