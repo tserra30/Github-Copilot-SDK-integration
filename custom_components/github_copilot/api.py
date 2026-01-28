@@ -27,6 +27,20 @@ class GitHubCopilotApiClientAuthenticationError(
     """Exception to indicate an authentication error."""
 
 
+async def _get_error_detail(response: aiohttp.ClientResponse) -> tuple[str, str]:
+    """Extract error details from API response."""
+    try:
+        error_body = await response.json()
+        LOGGER.debug("API error response body: %s", error_body)
+        error_detail = error_body.get("error", {}).get("message", "Unknown error")
+        error_code = error_body.get("error", {}).get("code", "")
+    except Exception:  # noqa: BLE001
+        LOGGER.debug("Could not parse error response body")
+        return "Unknown error", ""
+    else:
+        return error_detail, error_code
+
+
 async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
     """Verify that the response is valid."""
     if response.status in (401, 403):
@@ -36,27 +50,18 @@ async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
         msg = f"API endpoint not found (HTTP {response.status})"
         raise GitHubCopilotApiClientCommunicationError(msg)
     if response.status == 400:  # noqa: PLR2004
-        # Try to get more details from the response body for Bad Request errors
-        try:
-            error_body = await response.json()
-            LOGGER.debug("API error response body: %s", error_body)
-            error_detail = error_body.get("error", {}).get("message", "Bad Request")
-            # Also try to get the error code if available
-            error_code = error_body.get("error", {}).get("code", "")
-            if error_code:
-                error_detail = f"{error_detail} (code: {error_code})"
-        except Exception:  # noqa: BLE001
+        error_detail, error_code = await _get_error_detail(response)
+        if error_detail == "Unknown error":
             error_detail = "Bad Request - invalid request format or parameters"
+        if error_code:
+            error_detail = f"{error_detail} (code: {error_code})"
         msg = f"API request failed (HTTP 400): {error_detail}"
         raise GitHubCopilotApiClientError(msg)
     if response.status >= 400:  # noqa: PLR2004
-        # Log the response body for debugging
-        try:
-            error_body = await response.json()
-            LOGGER.debug("API error response body: %s", error_body)
-        except Exception:  # noqa: BLE001
-            LOGGER.debug("Could not parse error response body")
-        msg = f"API request failed with HTTP {response.status}"
+        error_detail, error_code = await _get_error_detail(response)
+        if error_code:
+            error_detail = f"{error_detail} (code: {error_code})"
+        msg = f"API request failed (HTTP {response.status}): {error_detail}"
         raise GitHubCopilotApiClientError(msg)
     response.raise_for_status()
 
@@ -109,13 +114,14 @@ class GitHubCopilotApiClient:
         # and use max_completion_tokens instead of max_tokens
         if self._model in REASONING_MODELS:
             data["max_completion_tokens"] = self._max_tokens
-        # Claude models may have different parameter requirements
+        # Claude models use standard parameters but temperature is clamped to 0-1
         elif self._model in CLAUDE_MODELS:
             data["max_tokens"] = self._max_tokens
-            # Only include temperature if it's within a valid range for Claude
-            if 0 <= self._temperature <= 1:
-                data["temperature"] = self._temperature
+            # Clamp temperature to Claude's valid range (0.0-1.0)
+            clamped_temp = max(0.0, min(1.0, self._temperature))
+            data["temperature"] = clamped_temp
         else:
+            # Standard OpenAI models
             data["max_tokens"] = self._max_tokens
             data["temperature"] = self._temperature
 
