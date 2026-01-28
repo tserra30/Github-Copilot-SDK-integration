@@ -119,6 +119,13 @@ class GitHubCopilotApiClient:
             data["max_tokens"] = self._max_tokens
             # Clamp temperature to Claude's valid range (0.0-1.0)
             clamped_temp = max(0.0, min(1.0, self._temperature))
+            if clamped_temp != self._temperature:
+                LOGGER.info(
+                    "Temperature %.3f is out of range for Claude models; "
+                    "clamping to %.3f (valid range is 0.0–1.0)",
+                    self._temperature,
+                    clamped_temp,
+                )
             data["temperature"] = clamped_temp
         else:
             # Standard OpenAI models
