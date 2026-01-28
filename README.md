@@ -97,6 +97,7 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 ## License
 
 This project is licensed under the GNU GPLv3 - see the [LICENSE](LICENSE) file for details.
+Some source code was originally licensed under the MIT license.
 
 ## Acknowledgments
 
@@ -106,6 +107,29 @@ This project is licensed under the GNU GPLv3 - see the [LICENSE](LICENSE) file f
 ---
 
 **Note**: This integration is not officially affiliated with GitHub or Microsoft.
+## Original MIT license from integration blueprint by [@ludeeus](https://github.com/ludeeus)
+
+MIT License
+
+Copyright (c) 2019 - 2025  Joakim Sørensen @ludeeus
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 [commits-shield]: https://img.shields.io/github/commit-activity/y/tserra30/Github-Copilot-SDK-integration.svg?style=for-the-badge
 [commits]: https://github.com/tserra30/Github-Copilot-SDK-integration/commits/main
