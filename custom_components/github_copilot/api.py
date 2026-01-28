@@ -37,8 +37,7 @@ async def _get_error_detail(response: aiohttp.ClientResponse) -> tuple[str, str]
     except Exception:  # noqa: BLE001
         LOGGER.debug("Could not parse error response body")
         return "Unknown error", ""
-    else:
-        return error_detail, error_code
+    return error_detail, error_code
 
 
 async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
@@ -59,6 +58,8 @@ async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
         raise GitHubCopilotApiClientError(msg)
     if response.status >= 400:  # noqa: PLR2004
         error_detail, error_code = await _get_error_detail(response)
+        if error_detail == "Unknown error":
+            error_detail = "HTTP error - unable to parse response details"
         if error_code:
             error_detail = f"{error_detail} (code: {error_code})"
         msg = f"API request failed (HTTP {response.status}): {error_detail}"
@@ -100,15 +101,33 @@ class GitHubCopilotApiClient:
             if "content" not in message:
                 msg = f"Message at index {i} missing 'content' field"
                 raise GitHubCopilotApiClientError(msg)
+
+            role = message["role"]
             content = message["content"]
-            if not isinstance(content, str) or not content.strip():
+
+            if not isinstance(role, str):
+                msg = (
+                    f"Message at index {i} has non-string 'role' field: "
+                    f"{type(role).__name__}"
+                )
+                raise GitHubCopilotApiClientError(msg)
+
+            if not isinstance(content, str):
+                msg = (
+                    f"Message at index {i} has non-string 'content' field: "
+                    f"{type(content).__name__}"
+                )
+                raise GitHubCopilotApiClientError(msg)
+
+            if not content.strip():
                 msg = (
                     f"Message at index {i} has invalid 'content'; "
                     "expected a non-empty string"
                 )
                 raise GitHubCopilotApiClientError(msg)
-            if message["role"] not in ("user", "assistant", "system"):
-                msg = f"Invalid role '{message['role']}' at index {i}"
+
+            if role not in ("user", "assistant", "system"):
+                msg = f"Invalid role '{role}' at index {i}"
                 raise GitHubCopilotApiClientError(msg)
 
         # Build request data based on model type
@@ -129,7 +148,7 @@ class GitHubCopilotApiClient:
             if clamped_temp != self._temperature:
                 LOGGER.info(
                     "Temperature %.3f is out of range for Claude models; "
-                    "clamping to %.3f (valid range is 0.0–1.0)",
+                    "clamping to %.3f (valid range is 0.0-1.0)",
                     self._temperature,
                     clamped_temp,
                 )
