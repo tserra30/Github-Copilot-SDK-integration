@@ -100,6 +100,13 @@ class GitHubCopilotApiClient:
             if "content" not in message:
                 msg = f"Message at index {i} missing 'content' field"
                 raise GitHubCopilotApiClientError(msg)
+            content = message["content"]
+            if not isinstance(content, str) or not content.strip():
+                msg = (
+                    f"Message at index {i} has invalid 'content'; "
+                    "expected a non-empty string"
+                )
+                raise GitHubCopilotApiClientError(msg)
             if message["role"] not in ("user", "assistant", "system"):
                 msg = f"Invalid role '{message['role']}' at index {i}"
                 raise GitHubCopilotApiClientError(msg)
