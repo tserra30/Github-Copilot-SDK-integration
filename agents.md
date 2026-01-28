@@ -229,7 +229,7 @@ Contributions are welcome! See `CONTRIBUTING.md` for guidelines.
 
 ## License
 
-This integration is released under the MIT No Attribution. See `LICENSE` file for details.
+This integration is released under the GNU GPLv3. See `LICENSE` file for details.
 
 ## Acknowledgments
 
