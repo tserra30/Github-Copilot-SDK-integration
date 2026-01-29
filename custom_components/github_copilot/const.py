@@ -36,5 +36,9 @@ SUPPORTED_MODELS = [
 # and use max_completion_tokens instead of max_tokens
 REASONING_MODELS = {"o1", "o1-mini", "o3-mini"}
 
+# Claude models - these use standard OpenAI-compatible parameters
+# but temperature may need to be clamped to a valid range (0.0-1.0)
+CLAUDE_MODELS = {"claude-3.5-sonnet", "claude-3.7-sonnet"}
+
 # Conversation constants
 MAX_HISTORY_MESSAGES = 10

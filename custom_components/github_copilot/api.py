@@ -8,7 +8,7 @@ from typing import Any
 import aiohttp
 import async_timeout
 
-from .const import REASONING_MODELS
+from .const import CLAUDE_MODELS, LOGGER, REASONING_MODELS
 
 
 class GitHubCopilotApiClientError(Exception):
@@ -27,6 +27,19 @@ class GitHubCopilotApiClientAuthenticationError(
     """Exception to indicate an authentication error."""
 
 
+async def _get_error_detail(response: aiohttp.ClientResponse) -> tuple[str, str]:
+    """Extract error details from API response."""
+    try:
+        error_body = await response.json()
+        LOGGER.debug("API error response body: %s", error_body)
+        error_detail = error_body.get("error", {}).get("message", "Unknown error")
+        error_code = error_body.get("error", {}).get("code", "")
+    except Exception:  # noqa: BLE001
+        LOGGER.debug("Could not parse error response body")
+        return "Unknown error", ""
+    return error_detail, error_code
+
+
 async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
     """Verify that the response is valid."""
     if response.status in (401, 403):
@@ -36,16 +49,20 @@ async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
         msg = f"API endpoint not found (HTTP {response.status})"
         raise GitHubCopilotApiClientCommunicationError(msg)
     if response.status == 400:  # noqa: PLR2004
-        # Try to get more details from the response body for Bad Request errors
-        try:
-            error_body = await response.json()
-            error_detail = error_body.get("error", {}).get("message", "Bad Request")
-        except Exception:  # noqa: BLE001
+        error_detail, error_code = await _get_error_detail(response)
+        if error_detail == "Unknown error":
             error_detail = "Bad Request - invalid request format or parameters"
+        if error_code:
+            error_detail = f"{error_detail} (code: {error_code})"
         msg = f"API request failed (HTTP 400): {error_detail}"
         raise GitHubCopilotApiClientError(msg)
     if response.status >= 400:  # noqa: PLR2004
-        msg = f"API request failed with HTTP {response.status}"
+        error_detail, error_code = await _get_error_detail(response)
+        if error_detail == "Unknown error":
+            error_detail = "HTTP error - unable to parse response details"
+        if error_code:
+            error_detail = f"{error_detail} (code: {error_code})"
+        msg = f"API request failed (HTTP {response.status}): {error_detail}"
         raise GitHubCopilotApiClientError(msg)
     response.raise_for_status()
 
@@ -71,6 +88,48 @@ class GitHubCopilotApiClient:
 
     async def async_chat(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         """Send chat messages to GitHub Copilot API."""
+        # Validate messages
+        if not messages:
+            msg = "Messages list cannot be empty"
+            raise GitHubCopilotApiClientError(msg)
+
+        # Validate each message has required fields
+        for i, message in enumerate(messages):
+            if "role" not in message:
+                msg = f"Message at index {i} missing 'role' field"
+                raise GitHubCopilotApiClientError(msg)
+            if "content" not in message:
+                msg = f"Message at index {i} missing 'content' field"
+                raise GitHubCopilotApiClientError(msg)
+
+            role = message["role"]
+            content = message["content"]
+
+            if not isinstance(role, str):
+                msg = (
+                    f"Message at index {i} has non-string 'role' field: "
+                    f"{type(role).__name__}"
+                )
+                raise GitHubCopilotApiClientError(msg)
+
+            if not isinstance(content, str):
+                msg = (
+                    f"Message at index {i} has non-string 'content' field: "
+                    f"{type(content).__name__}"
+                )
+                raise GitHubCopilotApiClientError(msg)
+
+            if not content.strip():
+                msg = (
+                    f"Message at index {i} has invalid 'content'; "
+                    "expected a non-empty string"
+                )
+                raise GitHubCopilotApiClientError(msg)
+
+            if role not in ("user", "assistant", "system"):
+                msg = f"Invalid role '{role}' at index {i}"
+                raise GitHubCopilotApiClientError(msg)
+
         # Build request data based on model type
         data: dict[str, Any] = {
             "messages": messages,
@@ -81,7 +140,21 @@ class GitHubCopilotApiClient:
         # and use max_completion_tokens instead of max_tokens
         if self._model in REASONING_MODELS:
             data["max_completion_tokens"] = self._max_tokens
+        # Claude models use standard parameters but temperature is clamped to 0-1
+        elif self._model in CLAUDE_MODELS:
+            data["max_tokens"] = self._max_tokens
+            # Clamp temperature to Claude's valid range (0.0-1.0)
+            clamped_temp = max(0.0, min(1.0, self._temperature))
+            if clamped_temp != self._temperature:
+                LOGGER.info(
+                    "Temperature %.3f is out of range for Claude models; "
+                    "clamping to %.3f (valid range is 0.0-1.0)",
+                    self._temperature,
+                    clamped_temp,
+                )
+            data["temperature"] = clamped_temp
         else:
+            # Standard OpenAI models
             data["max_tokens"] = self._max_tokens
             data["temperature"] = self._temperature
 
