@@ -2,37 +2,65 @@
     "config": {
         "step": {
             "user": {
-                "description": "Configure GitHub Copilot integration. You'll need a GitHub Copilot API token. For more information, visit: https://github.com/tserra30/Github-Copilot-SDK-integration",
+                "title": "Connect to GitHub Copilot",
+                "description": "This integration requires a GitHub account with an active Copilot subscription.\n\nClick **Submit** to start the authentication process."
+            },
+            "authorize": {
+                "title": "Authorize with GitHub",
+                "description": "Please visit **[{verification_uri}]({verification_uri})** and enter this code:\n\n## `{user_code}`\n\nAfter authorizing, click **Submit** below."
+            },
+            "configure": {
+                "title": "Configure GitHub Copilot",
+                "description": "Choose your preferred settings for the conversation agent.",
                 "data": {
-                    "api_token": "API Token",
                     "model": "Model",
                     "max_tokens": "Maximum Tokens",
                     "temperature": "Temperature (Creativity)"
                 },
                 "data_description": {
-                    "api_token": "Your GitHub Copilot API token",
                     "model": "The AI model to use for conversations",
                     "max_tokens": "Maximum length of responses (100-4000)",
                     "temperature": "Controls randomness in responses (0=focused, 2=creative)"
                 }
+            },
+            "reauth_confirm": {
+                "title": "Re-authenticate with GitHub",
+                "description": "Your GitHub authorization has expired or been revoked. Click **Submit** to re-authenticate."
+            },
+            "reauth_authorize": {
+                "title": "Authorize with GitHub",
+                "description": "Please visit **[{verification_uri}]({verification_uri})** and enter this code:\n\n## `{user_code}`\n\nAfter authorizing, click **Submit** below."
             }
         },
         "error": {
-            "auth": "Invalid API token. Please check your credentials.",
+            "device_flow_failed": "Failed to start authentication. Please try again later.",
+            "authorization_pending": "Authorization not yet completed. Please complete the authorization in your browser and try again.",
+            "authorization_denied": "Authorization was denied. Please try again.",
+            "auth_failed": "Authentication failed. Please try again.",
+            "no_copilot_subscription": "No active GitHub Copilot subscription found. Please ensure your account has Copilot access.",
+            "auth": "Authentication failed. Please check your credentials.",
             "connection": "Unable to connect to GitHub Copilot API.",
             "unknown": "An unknown error occurred."
         },
         "abort": {
-            "already_configured": "GitHub Copilot is already configured."
+            "already_configured": "GitHub Copilot is already configured.",
+            "reauth_successful": "Re-authentication was successful."
         }
     },
     "options": {
         "step": {
-            "user": {
+            "init": {
+                "title": "GitHub Copilot Settings",
+                "description": "Adjust your conversation agent settings.",
                 "data": {
                     "model": "Model",
                     "max_tokens": "Maximum Tokens",
                     "temperature": "Temperature (Creativity)"
+                },
+                "data_description": {
+                    "model": "The AI model to use for conversations",
+                    "max_tokens": "Maximum length of responses (100-4000)",
+                    "temperature": "Controls randomness in responses (0=focused, 2=creative)"
                 }
             }
         }

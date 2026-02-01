@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from homeassistant.loader import Integration
 
     from .api import GitHubCopilotApiClient
+    from .auth import GitHubCopilotAuth
     from .coordinator import GitHubCopilotDataUpdateCoordinator
 
 
@@ -23,3 +24,4 @@ class GitHubCopilotData:
     client: GitHubCopilotApiClient
     coordinator: GitHubCopilotDataUpdateCoordinator
     integration: Integration
+    auth: GitHubCopilotAuth

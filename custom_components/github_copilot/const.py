@@ -8,7 +8,8 @@ DOMAIN = "github_copilot"
 ATTRIBUTION = "Powered by GitHub Copilot"
 
 # Configuration constants
-CONF_API_TOKEN = "api_token"  # noqa: S105
+CONF_API_TOKEN = "api_token"  # noqa: S105 - Legacy, kept for migration
+CONF_GITHUB_TOKEN = "github_token"  # noqa: S105
 CONF_MODEL = "model"
 CONF_MAX_TOKENS = "max_tokens"
 CONF_TEMPERATURE = "temperature"

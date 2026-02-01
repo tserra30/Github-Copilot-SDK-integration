@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import socket
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 import async_timeout
 
 from .const import CLAUDE_MODELS, LOGGER, REASONING_MODELS
+
+if TYPE_CHECKING:
+    from .auth import GitHubCopilotAuth
 
 
 class GitHubCopilotApiClientError(Exception):
@@ -68,23 +71,75 @@ async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
 
 
 class GitHubCopilotApiClient:
-    """GitHub Copilot API Client."""
+    """GitHub Copilot API Client.
+
+    This client handles communication with the GitHub Copilot API,
+    including automatic token refresh when using OAuth authentication.
+    """
 
     def __init__(
         self,
-        api_token: str,
         session: aiohttp.ClientSession,
+        auth: GitHubCopilotAuth,
         model: str = "gpt-4o",
         max_tokens: int = 1000,
         temperature: float = 0.7,
     ) -> None:
-        """Initialize GitHub Copilot API Client."""
-        self._api_token = api_token
+        """Initialize GitHub Copilot API Client.
+
+        Args:
+            session: aiohttp client session for making requests.
+            auth: Authentication handler for token management.
+            model: The model to use for chat completions.
+            max_tokens: Maximum tokens in the response.
+            temperature: Temperature for response generation.
+        """
         self._session = session
+        self._auth = auth
         self._model = model
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._base_url = "https://api.githubcopilot.com/chat/completions"
+
+    def update_settings(
+        self,
+        model: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ) -> None:
+        """Update client settings.
+
+        Args:
+            model: New model to use (optional).
+            max_tokens: New max tokens value (optional).
+            temperature: New temperature value (optional).
+        """
+        if model is not None:
+            self._model = model
+        if max_tokens is not None:
+            self._max_tokens = max_tokens
+        if temperature is not None:
+            self._temperature = temperature
+
+    async def _get_auth_token(self) -> str:
+        """Get a valid authentication token.
+
+        This method handles automatic token refresh when needed.
+
+        Returns:
+            A valid Copilot API token.
+
+        Raises:
+            GitHubCopilotApiClientAuthenticationError: If token retrieval fails.
+        """
+        try:
+            copilot_token = await self._auth.get_copilot_token()
+            return copilot_token.token
+        except Exception as err:
+            LOGGER.error("Failed to get authentication token: %s", err)
+            raise GitHubCopilotApiClientAuthenticationError(
+                f"Failed to authenticate: {err}"
+            ) from err
 
     async def async_chat(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         """Send chat messages to GitHub Copilot API."""
@@ -165,8 +220,7 @@ class GitHubCopilotApiClient:
         )
 
     async def async_test_connection(self) -> bool:
-        """
-        Test the API connection.
+        """Test the API connection.
 
         Raises:
             GitHubCopilotApiClientAuthenticationError: If authentication fails.
@@ -175,7 +229,6 @@ class GitHubCopilotApiClient:
 
         Returns:
             True if connection is successful.
-
         """
         await self.async_chat([{"role": "user", "content": "Hello"}])
         return True
@@ -191,9 +244,12 @@ class GitHubCopilotApiClient:
         if headers is None:
             headers = {}
 
+        # Get authentication token (auto-refreshes if needed)
+        token = await self._get_auth_token()
+
         headers.update(
             {
-                "Authorization": f"Bearer {self._api_token}",
+                "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
             }
         )
