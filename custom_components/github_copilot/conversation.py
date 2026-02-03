@@ -28,7 +28,12 @@ async def async_setup_entry(
         async_add_entities([agent])
         LOGGER.debug("GitHub Copilot conversation entity setup completed")
     except Exception as err:
-        LOGGER.exception("Failed to set up GitHub Copilot conversation entity: %s", err)
+        # Don't log exception details to avoid exposing sensitive
+        # config data
+        LOGGER.error(
+            "Failed to set up GitHub Copilot conversation entity: %s",
+            type(err).__name__,
+        )
         raise
 
 
@@ -156,7 +161,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             )
 
         except Exception as err:  # noqa: BLE001
-            LOGGER.exception("Error processing conversation: %s", err)
+            # Don't log exception details to avoid exposing sensitive
+            # user data or API tokens
+            LOGGER.error(
+                "Error processing conversation: %s",
+                type(err).__name__,
+            )
             # Remove the failed user message from history to avoid corrupting history
             if self.history.get(conversation_id):
                 self.history[conversation_id].pop()

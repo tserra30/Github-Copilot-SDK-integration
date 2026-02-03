@@ -222,21 +222,25 @@ class GitHubCopilotApiClient:
             # Re-raise our own exceptions without wrapping them
             raise
         except TimeoutError as exception:
-            msg = f"Timeout error fetching information - {exception}"
+            # Don't include exception details to avoid potential sensitive data exposure
+            msg = "Timeout error fetching information"
             LOGGER.error(msg)
             raise GitHubCopilotApiClientCommunicationError(
                 msg,
             ) from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
-            msg = f"Error fetching information - {exception}"
+            # Don't include exception details in the message to avoid
+            # leaking sensitive data such as API tokens that might be
+            # in headers or URLs
+            msg = f"Error fetching information - {type(exception).__name__}"
             LOGGER.error(msg)
             raise GitHubCopilotApiClientCommunicationError(
                 msg,
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
-            msg = f"Something really wrong happened! - {exception}"
-            LOGGER.exception(msg)
+            # Don't include exception details to avoid leaking sensitive information
+            msg = f"Unexpected error occurred - {type(exception).__name__}"
+            LOGGER.error(msg)
             raise GitHubCopilotApiClientError(
                 msg,
             ) from exception
- 
