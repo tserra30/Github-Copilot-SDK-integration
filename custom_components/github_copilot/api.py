@@ -239,3 +239,4 @@ class GitHubCopilotApiClient:
             raise GitHubCopilotApiClientError(
                 msg,
             ) from exception
+ 
