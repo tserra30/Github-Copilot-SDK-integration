@@ -2,7 +2,7 @@
     "config": {
         "step": {
             "user": {
-                "description": "Configure GitHub Copilot integration. You'll need a GitHub Copilot API token. For more information, visit: https://github.com/tserra30/Github-Copilot-SDK-integration",
+                "description": "Configure GitHub Copilot integration. You'll need a GitHub Copilot API token. For more information, visit the [documentation]({documentation_url}).",
                 "data": {
                     "api_token": "API Token",
                     "model": "Model",
