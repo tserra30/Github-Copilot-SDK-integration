@@ -8,7 +8,7 @@ from typing import Any
 import aiohttp
 import async_timeout
 
-from .const import CLAUDE_MODELS, LOGGER, REASONING_MODELS
+from .const import API_TIMEOUT, CLAUDE_MODELS, LOGGER, REASONING_MODELS
 
 
 class GitHubCopilotApiClientError(Exception):
@@ -34,8 +34,8 @@ async def _get_error_detail(response: aiohttp.ClientResponse) -> tuple[str, str]
         LOGGER.debug("API error response body: %s", error_body)
         error_detail = error_body.get("error", {}).get("message", "Unknown error")
         error_code = error_body.get("error", {}).get("code", "")
-    except Exception:  # noqa: BLE001
-        LOGGER.debug("Could not parse error response body")
+    except (ValueError, KeyError, TypeError) as err:
+        LOGGER.debug("Could not parse error response body: %s", err)
         return "Unknown error", ""
     return error_detail, error_code
 
@@ -207,7 +207,7 @@ class GitHubCopilotApiClient:
 
         try:
             LOGGER.debug("Making %s request to %s", method.upper(), url)
-            async with async_timeout.timeout(30):
+            async with async_timeout.timeout(API_TIMEOUT):
                 response = await self._session.request(
                     method=method,
                     url=url,

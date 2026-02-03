@@ -104,7 +104,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 LOGGER.error("API error response: %s", error_msg)
                 LOGGER.debug("Full error response: %s", response)
                 # Remove the failed user message from history
-                if self.history[conversation_id]:
+                if self.history.get(conversation_id):
                     self.history[conversation_id].pop()
                 intent_response = intent.IntentResponse(language=user_input.language)
                 intent_response.async_set_speech(f"API Error: {error_msg}")
@@ -119,7 +119,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 LOGGER.warning("No choices in API response")
                 LOGGER.debug("Full API response without choices: %s", response)
                 # Remove the failed user message from history
-                if self.history[conversation_id]:
+                if self.history.get(conversation_id):
                     self.history[conversation_id].pop()
                 intent_response = intent.IntentResponse(language=user_input.language)
                 intent_response.async_set_speech(

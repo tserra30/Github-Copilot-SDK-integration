@@ -42,3 +42,6 @@ CLAUDE_MODELS = {"claude-3.5-sonnet", "claude-3.7-sonnet"}
 
 # Conversation constants
 MAX_HISTORY_MESSAGES = 10
+
+# API constants
+API_TIMEOUT = 30  # Timeout in seconds for API requests

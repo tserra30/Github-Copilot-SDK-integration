@@ -5,7 +5,7 @@ from __future__ import annotations
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import (
     GitHubCopilotApiClient,
@@ -121,6 +121,6 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             model=model,
             max_tokens=max_tokens,
             temperature=temperature,
-            session=async_create_clientsession(self.hass),
+            session=async_get_clientsession(self.hass),
         )
         await client.async_test_connection()
