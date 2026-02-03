@@ -71,11 +71,10 @@ async def async_setup_entry(
         entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
         LOGGER.info("GitHub Copilot integration setup completed successfully")
+        return True  # noqa: TRY300
     except Exception as err:
         LOGGER.exception("Failed to set up GitHub Copilot integration: %s", err)
         raise
-    else:
-        return True
 
 
 async def async_unload_entry(

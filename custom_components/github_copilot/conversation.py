@@ -93,7 +93,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
 
         try:
             # Call GitHub Copilot API
-            msg_count = len(self.history[conversation_id])
+            msg_count = len(self.history.get(conversation_id, []))
             LOGGER.debug("Sending %d messages to API", msg_count)
             response = await client.async_chat(self.history[conversation_id])
             LOGGER.debug("Received API response: %s", response)
