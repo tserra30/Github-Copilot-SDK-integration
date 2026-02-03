@@ -238,7 +238,7 @@ class GitHubCopilotApiClient:
             raise GitHubCopilotApiClientCommunicationError(
                 msg,
             ) from exception
-        except Exception as exception:  # pylint: disable=broad-except  # noqa: BLE001
+        except Exception as exception:  # pylint: disable=broad-except
             # Don't include exception details to avoid leaking sensitive information
             msg = f"Unexpected error occurred - {type(exception).__name__}"
             LOGGER.error(msg)

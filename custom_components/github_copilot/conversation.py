@@ -27,7 +27,7 @@ async def async_setup_entry(
         agent = GitHubCopilotConversationEntity(config_entry)
         async_add_entities([agent])
         LOGGER.debug("GitHub Copilot conversation entity setup completed")
-    except Exception as err:  # noqa: BLE001
+    except Exception as err:
         # Don't log exception details to avoid exposing sensitive data
         # such as config data, API credentials, or user information
         LOGGER.error(
