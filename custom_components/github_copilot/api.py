@@ -37,7 +37,13 @@ async def _get_error_detail(response: aiohttp.ClientResponse) -> tuple[str, str]
         LOGGER.debug("API error response body: %s", error_body)
         error_detail = error_body.get("error", {}).get("message", "Unknown error")
         error_code = error_body.get("error", {}).get("code", "")
-    except (ValueError, KeyError, TypeError, aiohttp.ContentTypeError) as err:
+    except (
+        json.JSONDecodeError,
+        ValueError,
+        KeyError,
+        TypeError,
+        aiohttp.ContentTypeError,
+    ) as err:
         LOGGER.debug("Could not parse error response body: %s", err)
         return "Unknown error", ""
     return error_detail, error_code
