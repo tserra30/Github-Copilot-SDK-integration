@@ -222,7 +222,8 @@ class GitHubCopilotApiClient:
             # Re-raise our own exceptions without wrapping them
             raise
         except TimeoutError as exception:
-            # Don't include exception details to avoid potential sensitive data exposure
+            # Don't include exception details to avoid exposing sensitive data
+            # such as API tokens, request URLs, or response data
             msg = "Timeout error fetching information"
             LOGGER.error(msg)
             raise GitHubCopilotApiClientCommunicationError(
