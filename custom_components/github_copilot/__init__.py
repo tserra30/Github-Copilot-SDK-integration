@@ -45,31 +45,37 @@ async def async_setup_entry(
     entry: GitHubCopilotConfigEntry,
 ) -> bool:
     """Set up this integration using UI."""
-    coordinator = GitHubCopilotDataUpdateCoordinator(
-        hass=hass,
-        logger=LOGGER,
-        name=DOMAIN,
-        update_interval=timedelta(hours=1),
-    )
-    entry.runtime_data = GitHubCopilotData(
-        client=GitHubCopilotApiClient(
-            api_token=entry.data[CONF_API_TOKEN],
-            model=entry.data.get(CONF_MODEL, DEFAULT_MODEL),
-            max_tokens=entry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
-            temperature=entry.data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
-            session=async_get_clientsession(hass),
-        ),
-        integration=async_get_loaded_integration(hass, entry.domain),
-        coordinator=coordinator,
-    )
+    try:
+        coordinator = GitHubCopilotDataUpdateCoordinator(
+            hass=hass,
+            logger=LOGGER,
+            name=DOMAIN,
+            update_interval=timedelta(hours=1),
+        )
+        entry.runtime_data = GitHubCopilotData(
+            client=GitHubCopilotApiClient(
+                api_token=entry.data[CONF_API_TOKEN],
+                model=entry.data.get(CONF_MODEL, DEFAULT_MODEL),
+                max_tokens=entry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
+                temperature=entry.data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
+                session=async_get_clientsession(hass),
+            ),
+            integration=async_get_loaded_integration(hass, entry.domain),
+            coordinator=coordinator,
+        )
 
-    # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
-    await coordinator.async_config_entry_first_refresh()
+        # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
+        await coordinator.async_config_entry_first_refresh()
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-    return True
+        LOGGER.info("GitHub Copilot integration setup completed successfully")
+    except Exception as err:
+        LOGGER.exception("Failed to set up GitHub Copilot integration: %s", err)
+        raise
+    else:
+        return True
 
 
 async def async_unload_entry(
