@@ -72,7 +72,7 @@ async def async_setup_entry(
 
         LOGGER.info("GitHub Copilot integration setup completed successfully")
         return True  # noqa: TRY300
-    except Exception as err:
+    except Exception as err:  # noqa: BLE001
         # Don't log exception details to avoid exposing API tokens
         # or sensitive config data
         LOGGER.error(
