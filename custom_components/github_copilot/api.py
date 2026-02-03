@@ -8,7 +8,7 @@ from typing import Any
 import aiohttp
 import async_timeout
 
-from .const import CLAUDE_MODELS, LOGGER, REASONING_MODELS
+from .const import API_TIMEOUT, CLAUDE_MODELS, LOGGER, REASONING_MODELS
 
 
 class GitHubCopilotApiClientError(Exception):
@@ -34,8 +34,8 @@ async def _get_error_detail(response: aiohttp.ClientResponse) -> tuple[str, str]
         LOGGER.debug("API error response body: %s", error_body)
         error_detail = error_body.get("error", {}).get("message", "Unknown error")
         error_code = error_body.get("error", {}).get("code", "")
-    except Exception:  # noqa: BLE001
-        LOGGER.debug("Could not parse error response body")
+    except (ValueError, KeyError, TypeError) as err:
+        LOGGER.debug("Could not parse error response body: %s", err)
         return "Unknown error", ""
     return error_detail, error_code
 
@@ -91,15 +91,18 @@ class GitHubCopilotApiClient:
         # Validate messages
         if not messages:
             msg = "Messages list cannot be empty"
+            LOGGER.error(msg)
             raise GitHubCopilotApiClientError(msg)
 
         # Validate each message has required fields
         for i, message in enumerate(messages):
             if "role" not in message:
                 msg = f"Message at index {i} missing 'role' field"
+                LOGGER.error(msg)
                 raise GitHubCopilotApiClientError(msg)
             if "content" not in message:
                 msg = f"Message at index {i} missing 'content' field"
+                LOGGER.error(msg)
                 raise GitHubCopilotApiClientError(msg)
 
             role = message["role"]
@@ -110,6 +113,7 @@ class GitHubCopilotApiClient:
                     f"Message at index {i} has non-string 'role' field: "
                     f"{type(role).__name__}"
                 )
+                LOGGER.error(msg)
                 raise GitHubCopilotApiClientError(msg)
 
             if not isinstance(content, str):
@@ -117,6 +121,7 @@ class GitHubCopilotApiClient:
                     f"Message at index {i} has non-string 'content' field: "
                     f"{type(content).__name__}"
                 )
+                LOGGER.error(msg)
                 raise GitHubCopilotApiClientError(msg)
 
             if not content.strip():
@@ -124,10 +129,12 @@ class GitHubCopilotApiClient:
                     f"Message at index {i} has invalid 'content'; "
                     "expected a non-empty string"
                 )
+                LOGGER.error(msg)
                 raise GitHubCopilotApiClientError(msg)
 
             if role not in ("user", "assistant", "system"):
                 msg = f"Invalid role '{role}' at index {i}"
+                LOGGER.error(msg)
                 raise GitHubCopilotApiClientError(msg)
 
         # Build request data based on model type
@@ -199,13 +206,15 @@ class GitHubCopilotApiClient:
         )
 
         try:
-            async with async_timeout.timeout(30):
+            LOGGER.debug("Making %s request to %s", method.upper(), url)
+            async with async_timeout.timeout(API_TIMEOUT):
                 response = await self._session.request(
                     method=method,
                     url=url,
                     headers=headers,
                     json=data,
                 )
+                LOGGER.debug("Received response with status %s", response.status)
                 await _verify_response_or_raise(response)
                 return await response.json()
 
@@ -214,16 +223,19 @@ class GitHubCopilotApiClient:
             raise
         except TimeoutError as exception:
             msg = f"Timeout error fetching information - {exception}"
+            LOGGER.error(msg)
             raise GitHubCopilotApiClientCommunicationError(
                 msg,
             ) from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
             msg = f"Error fetching information - {exception}"
+            LOGGER.error(msg)
             raise GitHubCopilotApiClientCommunicationError(
                 msg,
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
             msg = f"Something really wrong happened! - {exception}"
+            LOGGER.exception(msg)
             raise GitHubCopilotApiClientError(
                 msg,
             ) from exception
