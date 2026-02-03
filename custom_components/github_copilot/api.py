@@ -4,12 +4,20 @@ from __future__ import annotations
 
 import json
 import socket
+import time
+import uuid
 from typing import Any
 
 import aiohttp
 import async_timeout
 
 from .const import API_TIMEOUT, CLAUDE_MODELS, LOGGER, REASONING_MODELS
+
+# Editor/plugin version headers required by GitHub Copilot API
+EDITOR_VERSION = "vscode/1.100.0"
+EDITOR_PLUGIN_VERSION = "copilot-chat/0.25.0"
+USER_AGENT = "GitHubCopilotChat/0.25.0"
+COPILOT_INTEGRATION_ID = "vscode-chat"
 
 
 class GitHubCopilotApiClientError(Exception):
@@ -94,6 +102,9 @@ class GitHubCopilotApiClient:
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._base_url = "https://api.githubcopilot.com/chat/completions"
+        # Generate machine ID and session ID for GitHub Copilot API
+        self._machine_id = str(uuid.uuid4())
+        self._session_id = f"{uuid.uuid4()}{int(time.time() * 1000)}"
 
     async def async_chat(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         """Send chat messages to GitHub Copilot API."""
@@ -150,6 +161,7 @@ class GitHubCopilotApiClient:
         data: dict[str, Any] = {
             "messages": messages,
             "model": self._model,
+            "stream": False,  # Required by GitHub Copilot API
         }
 
         # Reasoning models (o1, o1-mini, o3-mini) don't support temperature
@@ -207,10 +219,20 @@ class GitHubCopilotApiClient:
         if headers is None:
             headers = {}
 
+        # Add required headers for GitHub Copilot API
         headers.update(
             {
                 "Authorization": f"Bearer {self._api_token}",
                 "Content-Type": "application/json",
+                "x-request-id": str(uuid.uuid4()),
+                "vscode-machineid": self._machine_id,
+                "vscode-sessionid": self._session_id,
+                "openai-organization": "github-copilot",
+                "openai-intent": "conversation-panel",
+                "Copilot-Integration-Id": COPILOT_INTEGRATION_ID,
+                "editor-version": EDITOR_VERSION,
+                "editor-plugin-version": EDITOR_PLUGIN_VERSION,
+                "user-agent": USER_AGENT,
             }
         )
 
