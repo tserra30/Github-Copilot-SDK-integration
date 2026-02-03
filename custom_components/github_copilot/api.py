@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import socket
 from typing import Any
 
@@ -30,11 +31,19 @@ class GitHubCopilotApiClientAuthenticationError(
 async def _get_error_detail(response: aiohttp.ClientResponse) -> tuple[str, str]:
     """Extract error details from API response."""
     try:
-        error_body = await response.json()
+        # Use content_type=None to allow parsing responses with
+        # non-standard content types
+        error_body = await response.json(content_type=None)
         LOGGER.debug("API error response body: %s", error_body)
         error_detail = error_body.get("error", {}).get("message", "Unknown error")
         error_code = error_body.get("error", {}).get("code", "")
-    except (ValueError, KeyError, TypeError) as err:
+    except (
+        json.JSONDecodeError,
+        ValueError,
+        KeyError,
+        TypeError,
+        aiohttp.ContentTypeError,
+    ) as err:
         LOGGER.debug("Could not parse error response body: %s", err)
         return "Unknown error", ""
     return error_detail, error_code
@@ -216,7 +225,9 @@ class GitHubCopilotApiClient:
                 )
                 LOGGER.debug("Received response with status %s", response.status)
                 await _verify_response_or_raise(response)
-                return await response.json()
+                # Use content_type=None to handle responses with unexpected
+                # content types gracefully instead of raising ContentTypeError
+                return await response.json(content_type=None)
 
         except GitHubCopilotApiClientError:
             # Re-raise our own exceptions without wrapping them
@@ -225,6 +236,25 @@ class GitHubCopilotApiClient:
             # Don't include exception details to avoid exposing sensitive data
             # such as API tokens, request URLs, or response data
             msg = "Timeout error fetching information"
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientCommunicationError(
+                msg,
+            ) from exception
+        except aiohttp.ContentTypeError as exception:
+            # This handler is kept for defensive purposes in case future changes
+            # introduce paths that could raise ContentTypeError, or if aiohttp
+            # behavior changes. Currently, content_type=None prevents this.
+            msg = "API returned non-JSON response - check API endpoint and credentials"
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientCommunicationError(
+                msg,
+            ) from exception
+        except json.JSONDecodeError as exception:
+            # Handle invalid JSON in response body
+            msg = (
+                "API returned invalid JSON response - "
+                "check API endpoint and credentials"
+            )
             LOGGER.error(msg)
             raise GitHubCopilotApiClientCommunicationError(
                 msg,
