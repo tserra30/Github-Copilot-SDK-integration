@@ -235,7 +235,9 @@ class GitHubCopilotApiClient:
                 msg,
             ) from exception
         except aiohttp.ContentTypeError as exception:
-            # Handle non-JSON responses separately with a clearer message
+            # This handler is kept for defensive purposes in case future changes
+            # introduce paths that could raise ContentTypeError, or if aiohttp
+            # behavior changes. Currently, content_type=None prevents this.
             msg = "API returned non-JSON response - check API endpoint and credentials"
             LOGGER.error(msg)
             raise GitHubCopilotApiClientCommunicationError(
