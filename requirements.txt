@@ -2,4 +2,4 @@ colorlog==6.10.1
 github-copilot-sdk==0.1.21
 homeassistant==2024.12.5
 pip>=21.3.1
-ruff==0.14.14
+ruff==0.15.0
