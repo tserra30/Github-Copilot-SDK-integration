@@ -9,7 +9,7 @@ from homeassistant.const import MATCH_ALL
 from homeassistant.helpers import intent
 from homeassistant.util import ulid
 
-from .const import LOGGER, MAX_HISTORY_MESSAGES
+from .const import LOGGER
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -47,7 +47,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         self.entry = config_entry
         self._attr_name = "GitHub Copilot"
         self._attr_unique_id = f"{config_entry.entry_id}-conversation"
-        self.history: dict[str, list[dict]] = {}
+        self.sessions: dict[str, object] = {}
 
     @property
     def supported_languages(self) -> list[str] | Literal["*"]:
@@ -79,81 +79,18 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 response=intent_response,
                 conversation_id=conversation_id,
             )
-        if conversation_id not in self.history:
-            self.history[conversation_id] = []
-
-        # Add user message to history
-        self.history[conversation_id].append(
-            {
-                "role": "user",
-                "content": user_input.text,
-            }
-        )
-
-        # Keep only last messages to avoid token limits
-        if len(self.history[conversation_id]) > MAX_HISTORY_MESSAGES:
-            self.history[conversation_id] = self.history[conversation_id][
-                -MAX_HISTORY_MESSAGES:
-            ]
+        if conversation_id not in self.sessions:
+            session_context = await client.async_create_session()
+            self.sessions[conversation_id] = session_context
 
         try:
-            # Call GitHub Copilot API
-            msg_count = len(self.history.get(conversation_id, []))
-            LOGGER.debug("Sending %d messages to API", msg_count)
-            response = await client.async_chat(self.history[conversation_id])
-            LOGGER.debug("Received API response: %s", response)
-
-            # Check for error response from API
-            if "error" in response:
-                error_msg = response.get("error", {}).get("message", "Unknown error")
-                LOGGER.error("API error response: %s", error_msg)
-                LOGGER.debug("Full error response: %s", response)
-                # Remove the failed user message from history
-                if self.history.get(conversation_id):
-                    self.history[conversation_id].pop()
-                intent_response = intent.IntentResponse(language=user_input.language)
-                intent_response.async_set_speech(f"API Error: {error_msg}")
-                return conversation.ConversationResult(
-                    response=intent_response,
-                    conversation_id=conversation_id,
-                )
-
-            # Extract response text - handle various response formats
-            choices = response.get("choices", [])
-            if not choices:
-                LOGGER.warning("No choices in API response")
-                LOGGER.debug("Full API response without choices: %s", response)
-                # Remove the failed user message from history
-                if self.history.get(conversation_id):
-                    self.history[conversation_id].pop()
-                intent_response = intent.IntentResponse(language=user_input.language)
-                intent_response.async_set_speech(
-                    "No response received from the API. Please try again."
-                )
-                return conversation.ConversationResult(
-                    response=intent_response,
-                    conversation_id=conversation_id,
-                )
-
-            assistant_message = choices[0].get("message", {}).get("content", "")
-
-            if not assistant_message:
-                LOGGER.warning("Empty content in API response")
-                message_structure = choices[0].get("message", {})
-                LOGGER.debug("Full message structure: %s", message_structure)
-                assistant_message = "I received an empty response. Please try again."
-
-            # Add assistant response to history
-            self.history[conversation_id].append(
-                {
-                    "role": "assistant",
-                    "content": assistant_message,
-                }
+            session_context = self.sessions[conversation_id]
+            response_text = await client.async_send_prompt(
+                session_context.session_id,
+                user_input.text,
             )
-
-            # Create intent response
             intent_response = intent.IntentResponse(language=user_input.language)
-            intent_response.async_set_speech(assistant_message)
+            intent_response.async_set_speech(response_text)
 
             return conversation.ConversationResult(
                 response=intent_response,
@@ -162,14 +99,11 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
 
         except Exception as err:  # noqa: BLE001
             # Don't log exception details to avoid exposing sensitive
-            # user data or API tokens
+            # user data or tokens
             LOGGER.error(
                 "Error processing conversation: %s",
                 type(err).__name__,
             )
-            # Remove the failed user message from history to avoid corrupting history
-            if self.history.get(conversation_id):
-                self.history[conversation_id].pop()
             intent_response = intent.IntentResponse(language=user_input.language)
             intent_response.async_set_speech(
                 "Sorry, an error occurred while processing your request. "

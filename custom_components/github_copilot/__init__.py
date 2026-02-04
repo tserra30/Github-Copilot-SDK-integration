@@ -11,18 +11,13 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration
 
 from .api import GitHubCopilotApiClient
 from .const import (
     CONF_API_TOKEN,
-    CONF_MAX_TOKENS,
     CONF_MODEL,
-    CONF_TEMPERATURE,
-    DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL,
-    DEFAULT_TEMPERATURE,
     DOMAIN,
     LOGGER,
 )
@@ -54,11 +49,8 @@ async def async_setup_entry(
         )
         entry.runtime_data = GitHubCopilotData(
             client=GitHubCopilotApiClient(
-                api_token=entry.data[CONF_API_TOKEN],
                 model=entry.data.get(CONF_MODEL, DEFAULT_MODEL),
-                max_tokens=entry.data.get(CONF_MAX_TOKENS, DEFAULT_MAX_TOKENS),
-                temperature=entry.data.get(CONF_TEMPERATURE, DEFAULT_TEMPERATURE),
-                session=async_get_clientsession(hass),
+                client_options={"github_token": entry.data[CONF_API_TOKEN]},
             ),
             integration=async_get_loaded_integration(hass, entry.domain),
             coordinator=coordinator,
@@ -73,7 +65,7 @@ async def async_setup_entry(
         LOGGER.info("GitHub Copilot integration setup completed successfully")
         return True  # noqa: TRY300
     except Exception as err:
-        # Don't log exception details to avoid exposing API tokens
+        # Don't log exception details to avoid exposing tokens
         # or sensitive config data
         LOGGER.error(
             "Failed to set up GitHub Copilot integration: %s",
@@ -87,7 +79,10 @@ async def async_unload_entry(
     entry: GitHubCopilotConfigEntry,
 ) -> bool:
     """Handle removal of an entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        await entry.runtime_data.client.async_close()
+    return unload_ok
 
 
 async def async_reload_entry(

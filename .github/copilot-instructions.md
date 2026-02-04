@@ -2,15 +2,15 @@
 
 ## Project Overview
 
-This repository contains a Home Assistant custom integration that brings GitHub Copilot AI capabilities to Home Assistant. It enables voice assistants and AI-powered tasks by implementing a conversation agent powered by GitHub Copilot API.
+This repository contains a Home Assistant custom integration that brings GitHub Copilot AI capabilities to Home Assistant. It enables voice assistants and AI-powered tasks by implementing a conversation agent powered by the GitHub Copilot SDK.
 
 ## Technology Stack
 
 - **Platform**: Home Assistant Custom Integration
 - **Language**: Python 3.11+
-- **Key Dependencies**: 
+- **Key Dependencies**:
   - `homeassistant` - Core Home Assistant framework
-  - `aiohttp` - Async HTTP client for API calls
+  - `github-copilot-sdk` - Copilot SDK client library (uses Copilot CLI runtime)
 - **Development Tools**:
   - Ruff for linting (configured in `.ruff.toml`)
   - Dev container support (`.devcontainer.json`)
@@ -41,7 +41,7 @@ This repository contains a Home Assistant custom integration that brings GitHub 
 ```
 custom_components/github_copilot/
 ├── __init__.py           # Integration entry point
-├── api.py                # GitHub Copilot API client
+├── api.py                # GitHub Copilot SDK client
 ├── config_flow.py        # Configuration UI flow
 ├── conversation.py       # Conversation agent implementation
 ├── coordinator.py        # Data update coordinator
@@ -51,9 +51,9 @@ custom_components/github_copilot/
 
 ## Key Components
 
-### API Client (`api.py`)
+### SDK Client (`api.py`)
 - All methods should be async
-- Use aiohttp for HTTP requests
+- Use the GitHub Copilot SDK client
 - Implement proper error handling with custom exceptions
 - Include connection testing in `async_test_connection()`
 
@@ -66,7 +66,7 @@ custom_components/github_copilot/
 ### Configuration Flow (`config_flow.py`)
 - Validates credentials during setup
 - Provides clear error messages for users
-- Supports optional configuration parameters (model, temperature, max_tokens)
+- Supports optional configuration parameters (model)
 - Follows Home Assistant's config flow patterns
 
 ## Development Workflow
@@ -95,19 +95,16 @@ custom_components/github_copilot/
 ```python
 from __future__ import annotations
 
-# API client uses a shared session passed to the constructor
+import copilot
+
+
 class GitHubCopilotApiClient:
-    def __init__(self, api_token: str, session: aiohttp.ClientSession, ...) -> None:
-        self._session = session
-        
-    async def _api_wrapper(self, method: str, url: str, data: dict | None = None) -> Any:
-        """Get information from the API."""
-        try:
-            async with async_timeout.timeout(30):
-                response = await self._session.request(method=method, url=url, json=data)
-                return await response.json()
-        except TimeoutError as exception:
-            raise GitHubCopilotApiClientCommunicationError(...) from exception
+    def __init__(self, client_options: dict[str, str], ...) -> None:
+        self._client = copilot.CopilotClient(client_options)
+
+    async def async_test_connection(self) -> bool:
+        await self._client.start()
+        return True
 ```
 
 ### Error Handling
@@ -152,11 +149,11 @@ async def async_step_user(self, user_input=None):
 
 ## Important Notes
 
-- This integration uses GitHub Copilot API, not standard OpenAI API
+- This integration uses the GitHub Copilot SDK, not a raw API mimic
 - Supports multiple models: GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, Claude 3.7 Sonnet
 - Conversation history is stored in memory (not persisted)
 - API rate limits must be respected
-- All user data sent to GitHub Copilot API follows GitHub's privacy policy
+- All user data sent to GitHub Copilot follows GitHub's privacy policy
 
 ## Feature Development
 

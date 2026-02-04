@@ -9,6 +9,8 @@
   "documentation": "https://github.com/tserra30/Github-Copilot-SDK-integration",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/tserra30/Github-Copilot-SDK-integration/issues",
-  "requirements": [],
-  "version": "1.0.0"
+  "requirements": [
+    "github-copilot-sdk==0.1.21"
+  ],
+  "version": "1.0.1"
 }

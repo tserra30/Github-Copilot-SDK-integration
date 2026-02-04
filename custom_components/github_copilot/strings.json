@@ -2,24 +2,20 @@
     "config": {
         "step": {
             "user": {
-                "description": "Configure GitHub Copilot integration. You'll need a GitHub Copilot API token. For more information, visit the [documentation]({documentation_url}).",
+                "description": "Configure GitHub Copilot integration. You'll need a GitHub token for Copilot SDK. For more information, visit the [documentation]({documentation_url}).",
                 "data": {
-                    "api_token": "API Token",
-                    "model": "Model",
-                    "max_tokens": "Maximum Tokens",
-                    "temperature": "Temperature (Creativity)"
+                    "api_token": "GitHub Token",
+                    "model": "Model"
                 },
                 "data_description": {
-                    "api_token": "Your GitHub Copilot API token",
-                    "model": "The AI model to use for conversations",
-                    "max_tokens": "Maximum length of responses (100-4000)",
-                    "temperature": "Controls randomness in responses (0=focused, 2=creative)"
+                    "api_token": "Your GitHub token for Copilot SDK",
+                    "model": "The AI model to use for conversations"
                 }
             }
         },
         "error": {
-            "auth": "Invalid API token. Please check your credentials.",
-            "connection": "Unable to connect to GitHub Copilot API.",
+            "auth": "Invalid GitHub token. Please check your credentials.",
+            "connection": "Unable to connect to GitHub Copilot SDK.",
             "unknown": "An unknown error occurred."
         },
         "abort": {
@@ -30,9 +26,7 @@
         "step": {
             "user": {
                 "data": {
-                    "model": "Model",
-                    "max_tokens": "Maximum Tokens",
-                    "temperature": "Temperature (Creativity)"
+                    "model": "Model"
                 }
             }
         }

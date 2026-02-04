@@ -2,15 +2,15 @@
 
 ## Overview
 
-This integration adds GitHub Copilot AI capabilities to Home Assistant, enabling voice assistants and other AI-powered tasks similar to OpenAI, Claude, and Gemini integrations.
+This integration adds GitHub Copilot AI capabilities to Home Assistant using the GitHub Copilot SDK, enabling voice assistants and other AI-powered tasks similar to OpenAI, Claude, and Gemini integrations.
 
 ## Features
 
 - **Conversation Agent**: Use GitHub Copilot as a conversation agent in Home Assistant
 - **Voice Assistant Support**: Compatible with Home Assistant's voice assistant pipeline
-- **Configurable Models**: Support for multiple GPT models (GPT-4, GPT-4 Turbo, GPT-3.5 Turbo)
-- **Customizable Parameters**: Adjust temperature, max tokens, and other AI parameters
-- **Context Preservation**: Maintains conversation history within sessions
+- **Configurable Models**: Support for multiple GPT models (GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, Claude 3.7 Sonnet)
+- **Context Preservation**: Maintains conversation history within sessions via the SDK
+- **Copilot CLI Runtime**: Uses the GitHub Copilot CLI managed by the SDK
 
 ## Installation
 
@@ -36,23 +36,20 @@ This integration adds GitHub Copilot AI capabilities to Home Assistant, enabling
 2. Click **Add Integration**
 3. Search for **GitHub Copilot**
 4. Enter your configuration:
-   - **API Token**: Your GitHub Copilot API token
-   - **Model**: Select the AI model (default: GPT-4)
-   - **Maximum Tokens**: Set response length limit (100-4000, default: 1000)
-   - **Temperature**: Control creativity (0-2, default: 0.7)
-     - Lower values (0-0.5): More focused and deterministic
-     - Higher values (0.8-2): More creative and varied
+    - **API Token**: Your GitHub token for Copilot SDK authentication
+- **Model**: Select the AI model (default: GPT-4o)
 
-### Getting a GitHub Copilot API Token
+### Getting a GitHub Token
 
-To use this integration, you need a GitHub Copilot API token:
+To use this integration, you need a GitHub token to authenticate the Copilot SDK:
 
 1. Ensure you have an active GitHub Copilot subscription
-2. Visit GitHub's API token settings
-3. Generate a new token with appropriate permissions
-4. Copy and save the token securely
+2. Install the GitHub Copilot CLI and sign in, or provide a PAT token to the SDK
+3. Visit GitHub's API token settings
+4. Generate a new token with appropriate permissions
+5. Copy and save the token securely
 
-**Note**: Keep your API token secure and never share it publicly.
+**Note**: Keep your GitHub token secure and never share it publicly.
 
 ## Usage
 
@@ -111,42 +108,30 @@ GitHub Copilot can be used with Home Assistant's voice pipeline:
 
 Different models offer various capabilities:
 
+- **GPT-4o**: Default, balanced speed and capability
+- **GPT-4o-mini**: Faster responses, smaller model
 - **GPT-4**: Most capable, best reasoning and instruction following
 - **GPT-4 Turbo**: Faster responses, good balance of speed and capability
 - **GPT-3.5 Turbo**: Fastest, suitable for simple conversations
-
-### Temperature Settings
-
-Adjust the creativity/randomness of responses:
-
-- **0.0-0.3**: Highly focused, consistent, deterministic
-- **0.4-0.7**: Balanced (recommended for most use cases)
-- **0.8-1.5**: Creative, varied responses
-- **1.6-2.0**: Very creative, potentially unpredictable
-
-### Maximum Tokens
-
-Controls the length of responses:
-
-- **100-500**: Short, concise answers
-- **500-1500**: Standard responses (default: 1000)
-- **1500-4000**: Longer, more detailed explanations
+- **o3-mini**: Reasoning-focused model
+- **o1 / o1-mini**: Reasoning models with extended context
+- **Claude 3.5 Sonnet / Claude 3.7 Sonnet**: Anthropic models supported via Copilot
 
 ## Troubleshooting
 
 ### Authentication Errors
 
-**Issue**: "Invalid API token" error during setup
+**Issue**: "Invalid GitHub token" error during setup
 
 **Solutions**:
-- Verify your API token is correct
+- Verify your GitHub token is correct
 - Ensure your GitHub Copilot subscription is active
 - Check that the token has necessary permissions
 - Try generating a new token
 
 ### Connection Errors
 
-**Issue**: "Unable to connect to GitHub Copilot API"
+**Issue**: "Unable to connect to GitHub Copilot SDK"
 
 **Solutions**:
 - Check your internet connection
@@ -159,7 +144,6 @@ Controls the length of responses:
 **Issue**: Conversation takes too long or times out
 
 **Solutions**:
-- Reduce `max_tokens` setting
 - Try a faster model (GPT-3.5 Turbo)
 - Check your network latency
 - Verify API rate limits aren't exceeded
@@ -175,20 +159,19 @@ Controls the length of responses:
 
 ## API Limits and Rate Limiting
 
-GitHub Copilot API has rate limits:
+GitHub Copilot has rate limits:
 
 - Requests per minute: Varies by subscription tier
 - Tokens per minute: Varies by subscription tier
 - If you hit rate limits, responses will be delayed or fail
 
 **Best Practices**:
-- Use appropriate `max_tokens` values
 - Implement delays between automated requests
 - Monitor your API usage through GitHub
 
 ## Privacy and Data
 
-- Conversations are sent to GitHub Copilot API
+- Conversations are sent to GitHub Copilot via the SDK
 - GitHub's privacy policy applies to all API interactions
 - Conversation history is stored locally in Home Assistant memory
 - No conversation data is stored permanently by this integration
@@ -223,7 +206,7 @@ Contributions are welcome! See `CONTRIBUTING.md` for guidelines.
 - Initial release
 - Conversation agent support
 - Multi-model support (GPT-4, GPT-4 Turbo, GPT-3.5 Turbo)
-- Configurable parameters (temperature, max_tokens)
+- Configurable parameters (model selection)
 - Conversation history management
 - HACS compatibility
 
@@ -231,10 +214,38 @@ Contributions are welcome! See `CONTRIBUTING.md` for guidelines.
 
 This integration is released under the GNU GPLv3. See `LICENSE` file for details.
 
+### GitHub Copilot SDK License
+
+This integration depends on the GitHub Copilot SDK, which is licensed under the MIT License:
+
+```
+MIT License
+
+Copyright GitHub, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## Acknowledgments
 
 - Built on Home Assistant's conversation agent framework
-- Uses GitHub Copilot API
+- Uses GitHub Copilot SDK
 - Based on the Home Assistant integration blueprint by @ludeeus
 
 ---
