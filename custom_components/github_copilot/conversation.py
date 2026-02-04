@@ -148,6 +148,14 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         if error_result:
             return error_result
 
+        # Guard against None session_context (should not happen, but be defensive)
+        if session_context is None:
+            return self._create_error_result(
+                user_input.language,
+                conversation_id,
+                "Failed to create GitHub Copilot session. Please try again.",
+            )
+
         # Send the prompt and get response
         try:
             response_text = await client.async_send_prompt(
@@ -171,6 +179,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             )
         except GitHubCopilotApiClientCommunicationError as err:
             LOGGER.error("Communication error during conversation: %s", err)
+            self.sessions.pop(conversation_id, None)
             result = self._create_error_result(
                 user_input.language,
                 conversation_id,
@@ -179,6 +188,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             )
         except GitHubCopilotApiClientError as err:
             LOGGER.error("Error processing conversation: %s", err)
+            self.sessions.pop(conversation_id, None)
             result = self._create_error_result(
                 user_input.language,
                 conversation_id,

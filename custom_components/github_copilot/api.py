@@ -35,17 +35,16 @@ class GitHubCopilotApiClientAuthenticationError(
 
 
 @dataclass
-class CopilotDiagnostics:
+class CliInstallationStatus:
     """
-    Diagnostics information for troubleshooting Copilot CLI connection issues.
+    Status information for Copilot CLI installation check.
 
-    This dataclass collects diagnostic information when connection issues occur,
-    helping users understand what's wrong and how to fix it.
+    This dataclass collects information about CLI installation status,
+    helping users understand if the CLI is properly installed and accessible.
 
     Attributes:
         cli_installed: Whether the Copilot CLI was found on the system.
         cli_path: Path to the Copilot CLI executable, if found.
-        auth_status: Authentication status (unknown, authenticated, etc.).
         error_details: Specific error message for troubleshooting.
         suggestions: List of suggestions for the user to try.
 
@@ -53,7 +52,6 @@ class CopilotDiagnostics:
 
     cli_installed: bool = False
     cli_path: str | None = None
-    auth_status: str = "unknown"
     error_details: str = ""
     suggestions: list[str] = field(default_factory=list)
 
@@ -63,9 +61,6 @@ class CopilotDiagnostics:
         if not self.cli_installed:
             parts.append("GitHub Copilot CLI is not installed or not found in PATH.")
             parts.append("Please install it from: https://docs.github.com/copilot/cli")
-        elif self.auth_status == "not_authenticated":
-            parts.append("GitHub Copilot CLI is installed but not authenticated.")
-            parts.append("Please run 'copilot auth login' to authenticate.")
         elif self.error_details:
             parts.append(f"Error: {self.error_details}")
 
@@ -271,15 +266,15 @@ class GitHubCopilotApiClient:
                 await self._client.stop()
                 self._client = None
 
-    def _check_cli_installed(self) -> CopilotDiagnostics:
+    def _check_cli_installed(self) -> CliInstallationStatus:
         """Check if GitHub Copilot CLI is installed and accessible."""
-        diagnostics = CopilotDiagnostics()
+        status = CliInstallationStatus()
 
         # Check for copilot CLI in PATH
         cli_path = shutil.which("copilot")
         if cli_path:
-            diagnostics.cli_installed = True
-            diagnostics.cli_path = cli_path
+            status.cli_installed = True
+            status.cli_path = cli_path
         else:
             # Also check common installation locations
             common_paths = [
@@ -289,18 +284,18 @@ class GitHubCopilotApiClient:
             ]
             for path in common_paths:
                 if path.is_file() and os.access(path, os.X_OK):
-                    diagnostics.cli_installed = True
-                    diagnostics.cli_path = str(path)
+                    status.cli_installed = True
+                    status.cli_path = str(path)
                     break
 
-        if not diagnostics.cli_installed:
-            diagnostics.suggestions = [
+        if not status.cli_installed:
+            status.suggestions = [
                 "Install the GitHub Copilot CLI: https://docs.github.com/copilot/cli",
                 "Ensure the CLI is in your PATH",
                 "Check if you have an active GitHub Copilot subscription",
             ]
 
-        return diagnostics
+        return status
 
     async def _ensure_client(self) -> copilot.CopilotClient:
         """Ensure the Copilot SDK client is started."""
@@ -309,11 +304,11 @@ class GitHubCopilotApiClient:
                 return self._client
 
             # First check if CLI is installed
-            diagnostics = self._check_cli_installed()
-            if not diagnostics.cli_installed:
+            cli_status = self._check_cli_installed()
+            if not cli_status.cli_installed:
                 LOGGER.error(
                     "GitHub Copilot CLI not found. %s",
-                    diagnostics.to_user_message(),
+                    cli_status.to_user_message(),
                 )
                 msg = (
                     "GitHub Copilot CLI not found. "
@@ -355,17 +350,6 @@ class GitHubCopilotApiClient:
                     "The CLI server may not be running or is misconfigured."
                 )
                 raise GitHubCopilotApiClientCommunicationError(msg) from exception
-            except OSError as exception:
-                LOGGER.error(
-                    "OS error when starting Copilot CLI: %s - %s",
-                    type(exception).__name__,
-                    exception,
-                )
-                msg = (
-                    f"Failed to start GitHub Copilot CLI: {exception}. "
-                    "Please verify the CLI is properly installed."
-                )
-                raise GitHubCopilotApiClientCommunicationError(msg) from exception
             except Exception as exception:
                 LOGGER.error(
                     "Failed to start Copilot SDK client: %s - %s",
@@ -382,6 +366,7 @@ class GitHubCopilotApiClient:
             try:
                 auth_status = await client.get_auth_status()
             except Exception as exception:
+                await client.stop()
                 LOGGER.error(
                     "Failed to get Copilot authentication status: %s - %s",
                     type(exception).__name__,
@@ -394,6 +379,7 @@ class GitHubCopilotApiClient:
                 raise GitHubCopilotApiClientAuthenticationError(msg) from exception
 
             if not auth_status.isAuthenticated:
+                await client.stop()
                 LOGGER.warning(
                     "Copilot CLI is not authenticated. "
                     "User needs to run 'copilot auth login'"
