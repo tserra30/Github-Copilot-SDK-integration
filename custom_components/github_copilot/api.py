@@ -94,8 +94,9 @@ class GitHubCopilotApiClient:
     _COPILOT_TOKEN_URL = "https://api.github.com/copilot_internal/v2/token"  # noqa: S105
     # Chat completions URL
     _CHAT_URL = "https://api.githubcopilot.com/chat/completions"
-    # Copilot token cache duration in seconds (tokens valid for ~2 hours)
-    _TOKEN_CACHE_DURATION = 2 * 60 * 60  # 2 hours
+    # Copilot token cache duration in seconds
+    # Tokens are typically valid for ~2 hours; we use 1.5 hours for safety margin
+    _TOKEN_CACHE_DURATION = 90 * 60  # 1.5 hours
 
     def __init__(
         self,
@@ -169,6 +170,7 @@ class GitHubCopilotApiClient:
                         f"Failed to get Copilot token (HTTP {response.status}): "
                         f"{error_detail}"
                     )
+                    # Raise here to provide specific error context before try/except
                     raise GitHubCopilotApiClientError(msg)  # noqa: TRY301
 
                 data = await response.json(content_type=None)
@@ -176,6 +178,7 @@ class GitHubCopilotApiClient:
 
                 if not token:
                     msg = "No token in Copilot token response"
+                    # Raise here to provide specific error context before try/except
                     raise GitHubCopilotApiClientError(msg)  # noqa: TRY301
 
                 # Cache the token with expiration
