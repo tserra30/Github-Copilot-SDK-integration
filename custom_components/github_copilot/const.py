@@ -45,3 +45,9 @@ MAX_HISTORY_MESSAGES = 10
 
 # API constants
 API_TIMEOUT = 30  # Timeout in seconds for API requests
+
+# Editor/plugin version headers required by GitHub Copilot API
+EDITOR_VERSION = "vscode/1.100.0"
+EDITOR_PLUGIN_VERSION = "copilot-chat/0.25.0"
+USER_AGENT = "GitHubCopilotChat/0.25.0"
+COPILOT_INTEGRATION_ID = "vscode-chat"

@@ -11,13 +11,16 @@ from typing import Any
 import aiohttp
 import async_timeout
 
-from .const import API_TIMEOUT, CLAUDE_MODELS, LOGGER, REASONING_MODELS
-
-# Editor/plugin version headers required by GitHub Copilot API
-EDITOR_VERSION = "vscode/1.100.0"
-EDITOR_PLUGIN_VERSION = "copilot-chat/0.25.0"
-USER_AGENT = "GitHubCopilotChat/0.25.0"
-COPILOT_INTEGRATION_ID = "vscode-chat"
+from .const import (
+    API_TIMEOUT,
+    CLAUDE_MODELS,
+    COPILOT_INTEGRATION_ID,
+    EDITOR_PLUGIN_VERSION,
+    EDITOR_VERSION,
+    LOGGER,
+    REASONING_MODELS,
+    USER_AGENT,
+)
 
 
 class GitHubCopilotApiClientError(Exception):
