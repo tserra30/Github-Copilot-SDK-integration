@@ -48,11 +48,18 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant._
 
 ### Getting an API Token
 
-To use this integration, you need a GitHub personal access token:
+To use this integration, you need a GitHub personal access token with Copilot access:
 1. Ensure you have an active GitHub Copilot subscription
-2. Generate a PAT token from your GitHub developer settings.
-3. Make sure to add the necessary permissions to the token. (e.g., Copilot requests )
-4. Keep the token secure
+2. Generate a PAT token from your [GitHub developer settings](https://github.com/settings/tokens)
+3. Required permissions:
+   - `read:user` - to access user information
+   - `copilot` - for Copilot API access (if available in your token options)
+4. The integration automatically exchanges your PAT for a Copilot-specific token
+5. Keep your token secure and never share it publicly
+
+**Note**: The integration handles the two-step authentication process automatically:
+1. Your PAT is used to obtain a Copilot-specific token
+2. The Copilot token is then used for API requests and is cached for efficiency
 
 ## Usage
 

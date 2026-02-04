@@ -90,6 +90,13 @@ async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
 class GitHubCopilotApiClient:
     """GitHub Copilot API Client."""
 
+    # URL to exchange GitHub PAT for Copilot token
+    _COPILOT_TOKEN_URL = "https://api.github.com/copilot_internal/v2/token"  # noqa: S105
+    # Chat completions URL
+    _CHAT_URL = "https://api.githubcopilot.com/chat/completions"
+    # Copilot token cache duration in seconds (tokens valid for ~2 hours)
+    _TOKEN_CACHE_DURATION = 2 * 60 * 60  # 2 hours
+
     def __init__(
         self,
         api_token: str,
@@ -104,10 +111,92 @@ class GitHubCopilotApiClient:
         self._model = model
         self._max_tokens = max_tokens
         self._temperature = temperature
-        self._base_url = "https://api.githubcopilot.com/chat/completions"
+        self._base_url = self._CHAT_URL
         # Generate machine ID and session ID for GitHub Copilot API
         self._machine_id = str(uuid.uuid4())
         self._session_id = f"{uuid.uuid4()}{int(time.time() * 1000)}"
+        # Cached Copilot token and its expiration time
+        self._copilot_token: str | None = None
+        self._copilot_token_expires: float = 0
+
+    async def _get_copilot_token(self) -> str:
+        """
+        Exchange GitHub PAT for a Copilot API token.
+
+        GitHub Copilot requires a two-step authentication process:
+        1. Use GitHub PAT to request a Copilot-specific token
+        2. Use that Copilot token for chat API requests
+
+        Returns:
+            str: The Copilot API token.
+
+        Raises:
+            GitHubCopilotApiClientAuthenticationError: If authentication fails.
+            GitHubCopilotApiClientCommunicationError: If connection fails.
+            GitHubCopilotApiClientError: For other API errors.
+
+        """
+        # Return cached token if still valid
+        if self._copilot_token and time.time() < self._copilot_token_expires:
+            LOGGER.debug("Using cached Copilot token")
+            return self._copilot_token
+
+        LOGGER.debug("Requesting new Copilot token")
+
+        headers = {
+            "Authorization": f"Bearer {self._api_token}",
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT,
+        }
+
+        try:
+            async with async_timeout.timeout(API_TIMEOUT):
+                response = await self._session.get(
+                    url=self._COPILOT_TOKEN_URL,
+                    headers=headers,
+                )
+
+                if response.status in (401, 403):
+                    msg = (
+                        f"Authentication failed (HTTP {response.status}): "
+                        "Invalid GitHub token or no Copilot access"
+                    )
+                    raise GitHubCopilotApiClientAuthenticationError(msg)
+
+                if response.status != 200:  # noqa: PLR2004
+                    error_detail, _ = await _get_error_detail(response)
+                    msg = (
+                        f"Failed to get Copilot token (HTTP {response.status}): "
+                        f"{error_detail}"
+                    )
+                    raise GitHubCopilotApiClientError(msg)  # noqa: TRY301
+
+                data = await response.json(content_type=None)
+                token = data.get("token")
+
+                if not token:
+                    msg = "No token in Copilot token response"
+                    raise GitHubCopilotApiClientError(msg)  # noqa: TRY301
+
+                # Cache the token with expiration
+                self._copilot_token = token
+                self._copilot_token_expires = time.time() + self._TOKEN_CACHE_DURATION
+                LOGGER.debug("Successfully obtained Copilot token")
+                return token
+
+        except GitHubCopilotApiClientError:
+            raise
+        except TimeoutError as exception:
+            msg = "Timeout while requesting Copilot token"
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientCommunicationError(msg) from exception
+        except (aiohttp.ClientError, socket.gaierror) as exception:
+            msg = (
+                f"Connection error while requesting Copilot token: "
+                f"{type(exception).__name__}"
+            )
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientCommunicationError(msg) from exception
 
     async def async_chat(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         """Send chat messages to GitHub Copilot API."""
@@ -222,10 +311,13 @@ class GitHubCopilotApiClient:
         if headers is None:
             headers = {}
 
+        # Get the Copilot token (exchanges PAT for Copilot-specific token)
+        copilot_token = await self._get_copilot_token()
+
         # Add required headers for GitHub Copilot API
         headers.update(
             {
-                "Authorization": f"Bearer {self._api_token}",
+                "Authorization": f"Bearer {copilot_token}",
                 "Content-Type": "application/json",
                 "x-request-id": str(uuid.uuid4()),
                 "vscode-machineid": self._machine_id,
