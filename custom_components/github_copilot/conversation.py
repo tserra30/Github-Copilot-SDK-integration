@@ -150,10 +150,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
 
         # Guard against None session_context (should not happen, but be defensive)
         if session_context is None:
+            LOGGER.error("Session context is None after successful session creation")
             return self._create_error_result(
                 user_input.language,
                 conversation_id,
-                "Failed to create GitHub Copilot session. Please try again.",
+                "Internal error: session initialization failed. "
+                "Please try again or reload the integration.",
             )
 
         # Send the prompt and get response
