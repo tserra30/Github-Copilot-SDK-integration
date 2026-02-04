@@ -36,7 +36,20 @@ class GitHubCopilotApiClientAuthenticationError(
 
 @dataclass
 class CopilotDiagnostics:
-    """Diagnostics information for troubleshooting connection issues."""
+    """
+    Diagnostics information for troubleshooting Copilot CLI connection issues.
+
+    This dataclass collects diagnostic information when connection issues occur,
+    helping users understand what's wrong and how to fix it.
+
+    Attributes:
+        cli_installed: Whether the Copilot CLI was found on the system.
+        cli_path: Path to the Copilot CLI executable, if found.
+        auth_status: Authentication status (unknown, authenticated, etc.).
+        error_details: Specific error message for troubleshooting.
+        suggestions: List of suggestions for the user to try.
+
+    """
 
     cli_installed: bool = False
     cli_path: str | None = None

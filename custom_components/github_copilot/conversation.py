@@ -10,6 +10,7 @@ from homeassistant.helpers import intent
 from homeassistant.util import ulid
 
 from .api import (
+    CopilotSessionContext,
     GitHubCopilotApiClientAuthenticationError,
     GitHubCopilotApiClientCommunicationError,
     GitHubCopilotApiClientError,
@@ -52,7 +53,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         self.entry = config_entry
         self._attr_name = "GitHub Copilot"
         self._attr_unique_id = f"{config_entry.entry_id}-conversation"
-        self.sessions: dict[str, object] = {}
+        self.sessions: dict[str, CopilotSessionContext] = {}
 
     @property
     def supported_languages(self) -> list[str] | Literal["*"]:
@@ -77,13 +78,13 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         self,
         conversation_id: str,
         language: str,
-    ) -> tuple[object | None, conversation.ConversationResult | None]:
+    ) -> tuple[CopilotSessionContext | None, conversation.ConversationResult | None]:
         """Ensure a session exists, returning session and optional error result."""
         if conversation_id in self.sessions:
             return self.sessions[conversation_id], None
 
         error_result: conversation.ConversationResult | None = None
-        session_context = None
+        session_context: CopilotSessionContext | None = None
         try:
             client = self.entry.runtime_data.client
             session_context = await client.async_create_session()
