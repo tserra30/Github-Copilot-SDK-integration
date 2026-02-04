@@ -15,7 +15,7 @@
         },
         "error": {
             "auth": "Authentication failed. Please verify your GitHub token is valid and has Copilot permissions. Ensure you have an active GitHub Copilot subscription.",
-            "connection": "Unable to connect to GitHub Copilot CLI. Please verify: 1) The Copilot CLI is installed (https://docs.github.com/copilot/cli), 2) The Copilot CLI service is running and accessible from Home Assistant, 3) Your network connection is working.",
+            "connection": "Unable to connect to GitHub Copilot CLI. Please verify the Copilot CLI is installed, running, and accessible from Home Assistant. Check your network connection.",
             "unknown": "An unexpected error occurred. Please check the Home Assistant logs for details."
         },
         "abort": {
