@@ -5,17 +5,17 @@
 [![License][license-shield]](LICENSE)
 [![hacs][hacsbadge]][hacs]
 
-_Integration to bring GitHub Copilot AI capabilities to Home Assistant._
+_Integration to bring GitHub Copilot AI capabilities to Home Assistant using the GitHub Copilot SDK._
 
-**This integration provides a conversation agent powered by GitHub Copilot, enabling voice assistants and AI-powered tasks similar to OpenAI, Claude, and Gemini integrations.**
+**This integration provides a conversation agent powered by the GitHub Copilot SDK and Copilot CLI, enabling voice assistants and AI-powered tasks similar to OpenAI, Claude, and Gemini integrations.**
 
 ## Features
 
 - 🤖 **Conversation Agent** - Use GitHub Copilot as an AI conversation agent
 - 🎤 **Voice Assistant Support** - Works with Home Assistant's voice pipeline
 - 🔧 **Configurable Models** - Support for GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, and Claude 3.7 Sonnet
-- ⚙️ **Customizable Parameters** - Adjust temperature, max tokens, and more
-- 💬 **Context Preservation** - Maintains conversation history within sessions
+- 💬 **Context Preservation** - Maintains conversation history within sessions via the SDK
+- ⚠️ **Copilot CLI Required** - The GitHub Copilot SDK uses the Copilot CLI for authentication and runtime
 
 ## Installation
 
@@ -40,19 +40,18 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant._
 1. Go to **Settings** → **Devices & Services**
 2. Click **Add Integration**
 3. Search for **GitHub Copilot**
-4. Enter your GitHub Copilot API token
+4. Enter your GitHub token for Copilot SDK authentication
 5. Configure optional settings:
    - **Model**: Select from GPT-4o (default), GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, or Claude 3.7 Sonnet
-   - **Maximum Tokens**: Response length (100-4000)
-   - **Temperature**: Creativity level (0-2)
 
-### Getting an API Token
+### Getting a GitHub Token
 
-To use this integration, you need a GitHub personal access token:
+To use this integration, you need a GitHub personal access token that can authenticate the Copilot SDK:
 1. Ensure you have an active GitHub Copilot subscription
-2. Generate a PAT token from your GitHub developer settings.
-3. Make sure to add the necessary permissions to the token. (e.g., Copilot requests )
-4. Keep the token secure
+2. Install the GitHub Copilot CLI and sign in, or provide a PAT token for the SDK.
+3. Generate a PAT token from your GitHub developer settings.
+4. Make sure to add the necessary permissions to the token. (e.g., Copilot requests)
+5. Keep the token secure
 
 ## Usage
 
@@ -85,9 +84,9 @@ For detailed documentation, see [agents.md](agents.md)
 
 ## Troubleshooting
 
-- **Authentication errors**: Verify your API token is valid
-- **Connection issues**: Check internet connectivity and GitHub API status
-- **Slow responses**: Try reducing max_tokens or using a faster model
+- **Authentication errors**: Verify your GitHub token is valid for the Copilot SDK
+- **Connection issues**: Check internet connectivity and Copilot CLI status
+- **Slow responses**: Try using a faster model or reducing concurrent requests
 
 For more help, see the [agents.md](agents.md) documentation or [open an issue][issues].
 
@@ -99,6 +98,34 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 
 This project is licensed under the GNU GPLv3 - see the [LICENSE](LICENSE) file for details.
 Some source code was originally licensed under the MIT license.
+
+### GitHub Copilot SDK License
+
+This integration depends on the GitHub Copilot SDK, which is licensed under the MIT License:
+
+```
+MIT License
+
+Copyright GitHub, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ## Acknowledgments
 

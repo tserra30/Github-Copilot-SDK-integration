@@ -1,26 +1,18 @@
-"""GitHub Copilot API Client."""
+"""GitHub Copilot SDK Client wrapper."""
 
 from __future__ import annotations
 
-import json
-import socket
-import time
-import uuid
-from typing import Any
+import asyncio
+from contextlib import suppress
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
-import aiohttp
-import async_timeout
+import copilot
 
-from .const import (
-    API_TIMEOUT,
-    CLAUDE_MODELS,
-    COPILOT_INTEGRATION_ID,
-    EDITOR_PLUGIN_VERSION,
-    EDITOR_VERSION,
-    LOGGER,
-    REASONING_MODELS,
-    USER_AGENT,
-)
+from .const import LOGGER
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class GitHubCopilotApiClientError(Exception):
@@ -39,161 +31,30 @@ class GitHubCopilotApiClientAuthenticationError(
     """Exception to indicate an authentication error."""
 
 
-async def _get_error_detail(response: aiohttp.ClientResponse) -> tuple[str, str]:
-    """Extract error details from API response."""
-    try:
-        # Use content_type=None to allow parsing responses with
-        # non-standard content types
-        error_body = await response.json(content_type=None)
-        LOGGER.debug("API error response body: %s", error_body)
-        error_detail = error_body.get("error", {}).get("message", "Unknown error")
-        error_code = error_body.get("error", {}).get("code", "")
-    except (
-        json.JSONDecodeError,
-        ValueError,
-        KeyError,
-        TypeError,
-        aiohttp.ContentTypeError,
-    ) as err:
-        LOGGER.debug("Could not parse error response body: %s", err)
-        return "Unknown error", ""
-    return error_detail, error_code
+@dataclass
+class CopilotSessionContext:
+    """In-memory session context for Copilot SDK conversations."""
 
-
-async def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
-    """Verify that the response is valid."""
-    if response.status in (401, 403):
-        msg = f"Authentication failed (HTTP {response.status}): Invalid API token"
-        raise GitHubCopilotApiClientAuthenticationError(msg)
-    if response.status == 404:  # noqa: PLR2004
-        msg = f"API endpoint not found (HTTP {response.status})"
-        raise GitHubCopilotApiClientCommunicationError(msg)
-    if response.status == 400:  # noqa: PLR2004
-        error_detail, error_code = await _get_error_detail(response)
-        if error_detail == "Unknown error":
-            error_detail = "Bad Request - invalid request format or parameters"
-        if error_code:
-            error_detail = f"{error_detail} (code: {error_code})"
-        msg = f"API request failed (HTTP 400): {error_detail}"
-        raise GitHubCopilotApiClientError(msg)
-    if response.status >= 400:  # noqa: PLR2004
-        error_detail, error_code = await _get_error_detail(response)
-        if error_detail == "Unknown error":
-            error_detail = "HTTP error - unable to parse response details"
-        if error_code:
-            error_detail = f"{error_detail} (code: {error_code})"
-        msg = f"API request failed (HTTP {response.status}): {error_detail}"
-        raise GitHubCopilotApiClientError(msg)
-    response.raise_for_status()
+    session_id: str
+    copilot_session: copilot.CopilotSession
 
 
 class GitHubCopilotApiClient:
-    """GitHub Copilot API Client."""
+    """GitHub Copilot SDK client wrapper."""
 
     def __init__(
         self,
-        api_token: str,
-        session: aiohttp.ClientSession,
         model: str = "gpt-4o",
-        max_tokens: int = 1000,
-        temperature: float = 0.7,
+        *,
+        client_options: dict[str, Any] | None = None,
     ) -> None:
-        """Initialize GitHub Copilot API Client."""
-        self._api_token = api_token
-        self._session = session
+        """Initialize GitHub Copilot SDK client wrapper."""
         self._model = model
-        self._max_tokens = max_tokens
-        self._temperature = temperature
-        self._base_url = "https://api.githubcopilot.com/chat/completions"
-        # Generate machine ID and session ID for GitHub Copilot API
-        self._machine_id = str(uuid.uuid4())
-        self._session_id = f"{uuid.uuid4()}{int(time.time() * 1000)}"
-
-    async def async_chat(self, messages: list[dict[str, str]]) -> dict[str, Any]:
-        """Send chat messages to GitHub Copilot API."""
-        # Validate messages
-        if not messages:
-            msg = "Messages list cannot be empty"
-            LOGGER.error(msg)
-            raise GitHubCopilotApiClientError(msg)
-
-        # Validate each message has required fields
-        for i, message in enumerate(messages):
-            if "role" not in message:
-                msg = f"Message at index {i} missing 'role' field"
-                LOGGER.error(msg)
-                raise GitHubCopilotApiClientError(msg)
-            if "content" not in message:
-                msg = f"Message at index {i} missing 'content' field"
-                LOGGER.error(msg)
-                raise GitHubCopilotApiClientError(msg)
-
-            role = message["role"]
-            content = message["content"]
-
-            if not isinstance(role, str):
-                msg = (
-                    f"Message at index {i} has non-string 'role' field: "
-                    f"{type(role).__name__}"
-                )
-                LOGGER.error(msg)
-                raise GitHubCopilotApiClientError(msg)
-
-            if not isinstance(content, str):
-                msg = (
-                    f"Message at index {i} has non-string 'content' field: "
-                    f"{type(content).__name__}"
-                )
-                LOGGER.error(msg)
-                raise GitHubCopilotApiClientError(msg)
-
-            if not content.strip():
-                msg = (
-                    f"Message at index {i} has invalid 'content'; "
-                    "expected a non-empty string"
-                )
-                LOGGER.error(msg)
-                raise GitHubCopilotApiClientError(msg)
-
-            if role not in ("user", "assistant", "system"):
-                msg = f"Invalid role '{role}' at index {i}"
-                LOGGER.error(msg)
-                raise GitHubCopilotApiClientError(msg)
-
-        # Build request data based on model type
-        data: dict[str, Any] = {
-            "messages": messages,
-            "model": self._model,
-            "stream": False,  # Required by GitHub Copilot API
-        }
-
-        # Reasoning models (o1, o1-mini, o3-mini) don't support temperature
-        # and use max_completion_tokens instead of max_tokens
-        if self._model in REASONING_MODELS:
-            data["max_completion_tokens"] = self._max_tokens
-        # Claude models use standard parameters but temperature is clamped to 0-1
-        elif self._model in CLAUDE_MODELS:
-            data["max_tokens"] = self._max_tokens
-            # Clamp temperature to Claude's valid range (0.0-1.0)
-            clamped_temp = max(0.0, min(1.0, self._temperature))
-            if clamped_temp != self._temperature:
-                LOGGER.info(
-                    "Temperature %.3f is out of range for Claude models; "
-                    "clamping to %.3f (valid range is 0.0-1.0)",
-                    self._temperature,
-                    clamped_temp,
-                )
-            data["temperature"] = clamped_temp
-        else:
-            # Standard OpenAI models
-            data["max_tokens"] = self._max_tokens
-            data["temperature"] = self._temperature
-
-        return await self._api_wrapper(
-            method="post",
-            url=self._base_url,
-            data=data,
-        )
+        self._client_options = client_options or {}
+        self._client: copilot.CopilotClient | None = None
+        self._sessions: dict[str, CopilotSessionContext] = {}
+        self._session_lock = asyncio.Lock()
+        self._client_lock = asyncio.Lock()
 
     async def async_test_connection(self) -> bool:
         """
@@ -208,95 +69,138 @@ class GitHubCopilotApiClient:
             True if connection is successful.
 
         """
-        await self.async_chat([{"role": "user", "content": "Hello"}])
+        session = await self.async_create_session()
+        try:
+            await self.async_send_prompt(session.session_id, "Hello")
+        finally:
+            await self.async_end_session(session.session_id)
         return True
 
-    async def _api_wrapper(
-        self,
-        method: str,
-        url: str,
-        data: dict | None = None,
-        headers: dict | None = None,
-    ) -> Any:
-        """Get information from the API."""
-        if headers is None:
-            headers = {}
+    async def async_create_session(self) -> CopilotSessionContext:
+        """Create a Copilot SDK session."""
+        async with self._session_lock:
+            client = await self._ensure_client()
+            try:
+                copilot_session = await client.create_session(
+                    {
+                        "model": self._model,
+                        "streaming": False,
+                    }
+                )
+            except Exception as exception:
+                LOGGER.error(
+                    "Failed to create Copilot session: %s",
+                    type(exception).__name__,
+                )
+                msg = "Unable to start Copilot session."
+                raise GitHubCopilotApiClientError(msg) from exception
+            session_context = CopilotSessionContext(
+                session_id=copilot_session.session_id,
+                copilot_session=copilot_session,
+            )
+            self._sessions[session_context.session_id] = session_context
+            return session_context
 
-        # Add required headers for GitHub Copilot API
-        headers.update(
-            {
-                "Authorization": f"Bearer {self._api_token}",
-                "Content-Type": "application/json",
-                "x-request-id": str(uuid.uuid4()),
-                "vscode-machineid": self._machine_id,
-                "vscode-sessionid": self._session_id,
-                "openai-organization": "github-copilot",
-                "openai-intent": "conversation-panel",
-                "Copilot-Integration-Id": COPILOT_INTEGRATION_ID,
-                "editor-version": EDITOR_VERSION,
-                "editor-plugin-version": EDITOR_PLUGIN_VERSION,
-                "user-agent": USER_AGENT,
-            }
-        )
+    async def async_end_session(self, session_id: str) -> None:
+        """Destroy a Copilot SDK session."""
+        async with self._session_lock:
+            session = self._sessions.pop(session_id, None)
+        if not session:
+            return
+        try:
+            await session.copilot_session.destroy()
+        except Exception as exception:
+            LOGGER.error(
+                "Failed to destroy Copilot session: %s",
+                type(exception).__name__,
+            )
+            msg = "Unable to clean up Copilot session."
+            raise GitHubCopilotApiClientError(msg) from exception
+
+    async def async_send_prompt(self, session_id: str, prompt: str) -> str:
+        """Send a prompt to an existing Copilot SDK session."""
+        if not prompt.strip():
+            msg = "Prompt cannot be empty"
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientError(msg)
+
+        async with self._session_lock:
+            session = self._sessions.get(session_id)
+        if not session:
+            msg = "Session not found"
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientError(msg)
 
         try:
-            LOGGER.debug("Making %s request to %s", method.upper(), url)
-            async with async_timeout.timeout(API_TIMEOUT):
-                response = await self._session.request(
-                    method=method,
-                    url=url,
-                    headers=headers,
-                    json=data,
-                )
-                LOGGER.debug("Received response with status %s", response.status)
-                await _verify_response_or_raise(response)
-                # Use content_type=None to handle responses with unexpected
-                # content types gracefully instead of raising ContentTypeError
-                return await response.json(content_type=None)
-
-        except GitHubCopilotApiClientError:
-            # Re-raise our own exceptions without wrapping them
-            raise
+            event = await session.copilot_session.send_and_wait({"prompt": prompt})
         except TimeoutError as exception:
-            # Don't include exception details to avoid exposing sensitive data
-            # such as API tokens, request URLs, or response data
-            msg = "Timeout error fetching information"
-            LOGGER.error(msg)
-            raise GitHubCopilotApiClientCommunicationError(
-                msg,
-            ) from exception
-        except aiohttp.ContentTypeError as exception:
-            # This handler is kept for defensive purposes in case future changes
-            # introduce paths that could raise ContentTypeError, or if aiohttp
-            # behavior changes. Currently, content_type=None prevents this.
-            msg = "API returned non-JSON response - check API endpoint and credentials"
-            LOGGER.error(msg)
-            raise GitHubCopilotApiClientCommunicationError(
-                msg,
-            ) from exception
-        except json.JSONDecodeError as exception:
-            # Handle invalid JSON in response body
-            msg = (
-                "API returned invalid JSON response - "
-                "check API endpoint and credentials"
+            LOGGER.error("Copilot session timed out waiting for response")
+            msg = "Copilot session timed out."
+            raise GitHubCopilotApiClientCommunicationError(msg) from exception
+        except Exception as exception:
+            LOGGER.error(
+                "Copilot session error: %s",
+                type(exception).__name__,
             )
+            msg = "Copilot session failed to respond."
+            raise GitHubCopilotApiClientError(msg) from exception
+
+        if event is None:
+            msg = "No response received from Copilot session"
             LOGGER.error(msg)
-            raise GitHubCopilotApiClientCommunicationError(
-                msg,
-            ) from exception
-        except (aiohttp.ClientError, socket.gaierror) as exception:
-            # Don't include exception details in the message to avoid
-            # leaking sensitive data such as API tokens that might be
-            # in headers or URLs
-            msg = f"Error fetching information - {type(exception).__name__}"
+            raise GitHubCopilotApiClientError(msg)
+
+        content = getattr(event.data, "content", None)
+        if not content:
+            msg = "Copilot session returned empty content"
             LOGGER.error(msg)
-            raise GitHubCopilotApiClientCommunicationError(
-                msg,
-            ) from exception
-        except Exception as exception:  # pylint: disable=broad-except
-            # Don't include exception details to avoid leaking sensitive information
-            msg = f"Unexpected error occurred - {type(exception).__name__}"
-            LOGGER.error(msg)
-            raise GitHubCopilotApiClientError(
-                msg,
-            ) from exception
+            raise GitHubCopilotApiClientError(msg)
+        return content
+
+    async def async_close(self) -> None:
+        """Close the Copilot SDK client and sessions."""
+        async with self._session_lock:
+            session_ids = list(self._sessions.keys())
+        for session_id in session_ids:
+            with suppress(GitHubCopilotApiClientError):
+                await self.async_end_session(session_id)
+        async with self._client_lock:
+            if self._client:
+                await self._client.stop()
+                self._client = None
+
+    async def _ensure_client(self) -> copilot.CopilotClient:
+        """Ensure the Copilot SDK client is started."""
+        async with self._client_lock:
+            if self._client:
+                return self._client
+            client = copilot.CopilotClient(self._client_options)
+            try:
+                await client.start()
+                auth_status = await client.get_auth_status()
+            except Exception as exception:
+                LOGGER.error(
+                    "Failed to start Copilot SDK client: %s",
+                    type(exception).__name__,
+                )
+                msg = "Unable to connect to Copilot CLI."
+                raise GitHubCopilotApiClientCommunicationError(msg) from exception
+            if not auth_status.isAuthenticated:
+                msg = "Copilot CLI authentication failed."
+                raise GitHubCopilotApiClientAuthenticationError(msg)
+            self._client = client
+            return client
+
+    async def async_available_models(self) -> Sequence[str]:
+        """Return available model IDs from the Copilot SDK."""
+        client = await self._ensure_client()
+        try:
+            models = await client.list_models()
+        except Exception as exception:
+            LOGGER.error(
+                "Failed to list Copilot models: %s",
+                type(exception).__name__,
+            )
+            msg = "Unable to fetch Copilot models."
+            raise GitHubCopilotApiClientCommunicationError(msg) from exception
+        return [model.id for model in models]
