@@ -34,23 +34,41 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow initialized by the user."""
         _errors = {}
         if user_input is not None:
+            model = user_input.get(CONF_MODEL, DEFAULT_MODEL)
             try:
+                LOGGER.debug(
+                    "Testing GitHub Copilot credentials with model '%s'",
+                    model,
+                )
                 await self._test_credentials(
                     api_token=user_input[CONF_API_TOKEN],
-                    model=user_input.get(CONF_MODEL, DEFAULT_MODEL),
+                    model=model,
                 )
             except GitHubCopilotApiClientAuthenticationError as exception:
-                LOGGER.warning(exception)
+                LOGGER.warning(
+                    "GitHub Copilot authentication failed: %s",
+                    exception,
+                )
                 _errors["base"] = "auth"
             except GitHubCopilotApiClientCommunicationError as exception:
-                LOGGER.error(exception)
+                LOGGER.error(
+                    "Failed to connect to GitHub Copilot CLI: %s",
+                    exception,
+                )
                 _errors["base"] = "connection"
             except GitHubCopilotApiClientError as exception:
-                LOGGER.exception(exception)
+                LOGGER.exception(
+                    "Unexpected error during GitHub Copilot setup: %s",
+                    exception,
+                )
                 _errors["base"] = "unknown"
             else:
                 await self.async_set_unique_id("github_copilot")
                 self._abort_if_unique_id_configured()
+                LOGGER.info(
+                    "GitHub Copilot integration configured with model '%s'",
+                    model,
+                )
                 return self.async_create_entry(
                     title="GitHub Copilot",
                     data=user_input,

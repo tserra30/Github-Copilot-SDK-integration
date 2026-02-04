@@ -9,6 +9,11 @@ from homeassistant.const import MATCH_ALL
 from homeassistant.helpers import intent
 from homeassistant.util import ulid
 
+from .api import (
+    GitHubCopilotApiClientAuthenticationError,
+    GitHubCopilotApiClientCommunicationError,
+    GitHubCopilotApiClientError,
+)
 from .const import LOGGER
 
 if TYPE_CHECKING:
@@ -54,62 +59,141 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         """Return a list of supported languages."""
         return MATCH_ALL
 
+    def _create_error_result(
+        self,
+        language: str,
+        conversation_id: str,
+        message: str,
+    ) -> conversation.ConversationResult:
+        """Create an error response result."""
+        intent_response = intent.IntentResponse(language=language)
+        intent_response.async_set_speech(message)
+        return conversation.ConversationResult(
+            response=intent_response,
+            conversation_id=conversation_id,
+        )
+
+    async def _ensure_session(
+        self,
+        conversation_id: str,
+        language: str,
+    ) -> tuple[object | None, conversation.ConversationResult | None]:
+        """Ensure a session exists, returning session and optional error result."""
+        if conversation_id in self.sessions:
+            return self.sessions[conversation_id], None
+
+        error_result: conversation.ConversationResult | None = None
+        session_context = None
+        try:
+            client = self.entry.runtime_data.client
+            session_context = await client.async_create_session()
+            self.sessions[conversation_id] = session_context
+        except GitHubCopilotApiClientAuthenticationError as err:
+            LOGGER.error("Authentication error creating session: %s", err)
+            error_result = self._create_error_result(
+                language,
+                conversation_id,
+                "GitHub Copilot authentication failed. "
+                "Please check your GitHub token and ensure you have "
+                "an active Copilot subscription.",
+            )
+        except GitHubCopilotApiClientCommunicationError as err:
+            LOGGER.error("Communication error creating session: %s", err)
+            error_result = self._create_error_result(
+                language,
+                conversation_id,
+                "Unable to connect to GitHub Copilot. "
+                "Please check if the Copilot CLI is installed and running, "
+                "and verify your network connection.",
+            )
+        except GitHubCopilotApiClientError as err:
+            LOGGER.error("Error creating session: %s", err)
+            error_result = self._create_error_result(
+                language,
+                conversation_id,
+                "Failed to start a conversation with GitHub Copilot. "
+                "Please check the logs for more details.",
+            )
+        return session_context, error_result
+
     async def async_process(
         self,
         user_input: conversation.ConversationInput,
     ) -> conversation.ConversationResult:
         """Process a sentence."""
-        # Get or create conversation history for this conversation_id
         conversation_id = user_input.conversation_id or ulid.ulid_now()
+        result: conversation.ConversationResult | None = None
 
         # Safely access runtime_data and client
         try:
             client = self.entry.runtime_data.client
         except AttributeError as err:
             LOGGER.error(
-                "Failed to access API client - integration setup may be incomplete: %s",
+                "Failed to access API client - integration may be incomplete: %s",
                 err,
             )
-            intent_response = intent.IntentResponse(language=user_input.language)
-            intent_response.async_set_speech(
-                "The integration is not properly initialized. "
-                "Please check the logs and try reloading the integration."
+            return self._create_error_result(
+                user_input.language,
+                conversation_id,
+                "The GitHub Copilot integration is not properly initialized. "
+                "Please check the logs and try reloading the integration.",
             )
-            return conversation.ConversationResult(
-                response=intent_response,
-                conversation_id=conversation_id,
-            )
-        if conversation_id not in self.sessions:
-            session_context = await client.async_create_session()
-            self.sessions[conversation_id] = session_context
 
+        # Create session if needed
+        session_context, error_result = await self._ensure_session(
+            conversation_id,
+            user_input.language,
+        )
+        if error_result:
+            return error_result
+
+        # Send the prompt and get response
         try:
-            session_context = self.sessions[conversation_id]
             response_text = await client.async_send_prompt(
                 session_context.session_id,
                 user_input.text,
             )
             intent_response = intent.IntentResponse(language=user_input.language)
             intent_response.async_set_speech(response_text)
-
-            return conversation.ConversationResult(
+            result = conversation.ConversationResult(
                 response=intent_response,
                 conversation_id=conversation_id,
             )
-
+        except GitHubCopilotApiClientAuthenticationError as err:
+            LOGGER.error("Authentication error during conversation: %s", err)
+            self.sessions.pop(conversation_id, None)
+            result = self._create_error_result(
+                user_input.language,
+                conversation_id,
+                "GitHub Copilot session expired or authentication failed. "
+                "Please reload the integration and try again.",
+            )
+        except GitHubCopilotApiClientCommunicationError as err:
+            LOGGER.error("Communication error during conversation: %s", err)
+            result = self._create_error_result(
+                user_input.language,
+                conversation_id,
+                "Lost connection to GitHub Copilot. "
+                "Please check your network and try again.",
+            )
+        except GitHubCopilotApiClientError as err:
+            LOGGER.error("Error processing conversation: %s", err)
+            result = self._create_error_result(
+                user_input.language,
+                conversation_id,
+                "Sorry, GitHub Copilot encountered an error. "
+                "Please try again or check the logs for details.",
+            )
         except Exception as err:  # noqa: BLE001
-            # Don't log exception details to avoid exposing sensitive
-            # user data or tokens
             LOGGER.error(
-                "Error processing conversation: %s",
+                "Unexpected error processing conversation: %s - %s",
                 type(err).__name__,
+                str(err),
             )
-            intent_response = intent.IntentResponse(language=user_input.language)
-            intent_response.async_set_speech(
-                "Sorry, an error occurred while processing your request. "
-                "Please check the logs for more details."
+            result = self._create_error_result(
+                user_input.language,
+                conversation_id,
+                "Sorry, an unexpected error occurred. "
+                "Please check the Home Assistant logs for details.",
             )
-            return conversation.ConversationResult(
-                response=intent_response,
-                conversation_id=conversation_id,
-            )
+        return result

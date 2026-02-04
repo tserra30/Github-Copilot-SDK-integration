@@ -2,24 +2,24 @@
     "config": {
         "step": {
             "user": {
-                "description": "Configure GitHub Copilot integration. You'll need a GitHub token for Copilot SDK. For more information, visit the [documentation]({documentation_url}).",
+                "description": "Configure GitHub Copilot integration. You'll need a GitHub token for Copilot SDK and the Copilot CLI installed. For more information, visit the [documentation]({documentation_url}).",
                 "data": {
                     "api_token": "GitHub Token",
                     "model": "Model"
                 },
                 "data_description": {
-                    "api_token": "Your GitHub token for Copilot SDK",
+                    "api_token": "Your GitHub personal access token with Copilot permissions",
                     "model": "The AI model to use for conversations"
                 }
             }
         },
         "error": {
-            "auth": "Invalid GitHub token. Please check your credentials.",
-            "connection": "Unable to connect to GitHub Copilot SDK.",
-            "unknown": "An unknown error occurred."
+            "auth": "Authentication failed. Please verify your GitHub token is valid and has Copilot permissions. Ensure you have an active GitHub Copilot subscription.",
+            "connection": "Unable to connect to GitHub Copilot CLI. Please verify: 1) The Copilot CLI is installed (https://docs.github.com/copilot/cli), 2) You are authenticated (run 'copilot auth login'), 3) Your network connection is working.",
+            "unknown": "An unexpected error occurred. Please check the Home Assistant logs for details."
         },
         "abort": {
-            "already_configured": "GitHub Copilot is already configured."
+            "already_configured": "GitHub Copilot is already configured. Only one instance is allowed."
         }
     },
     "options": {
@@ -27,6 +27,9 @@
             "user": {
                 "data": {
                     "model": "Model"
+                },
+                "data_description": {
+                    "model": "The AI model to use for conversations"
                 }
             }
         }
