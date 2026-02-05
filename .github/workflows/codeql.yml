@@ -14,7 +14,6 @@ jobs:
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
     permissions:
       security-events: write
-      packages: read
       actions: read
       contents: read
 
@@ -29,16 +28,16 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       
     - name: Set up Python 3.13
       if: matrix.language == 'python'
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: '3.13'
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@baf56f3b32c0759f0d68b6d924db2c4b4edccdd4 # v3.32.1
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
@@ -46,6 +45,6 @@ jobs:
         setup-python-dependencies: false
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@baf56f3b32c0759f0d68b6d924db2c4b4edccdd4 # v3.32.1
       with:
         category: "/language:${{matrix.language}}"
