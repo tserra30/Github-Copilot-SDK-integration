@@ -84,9 +84,32 @@ For detailed documentation, see [agents.md](agents.md)
 
 ## Troubleshooting
 
-- **Authentication errors**: Verify your GitHub token is valid for the Copilot SDK
-- **Connection issues**: Check internet connectivity and Copilot CLI status
-- **Slow responses**: Try using a faster model or reducing concurrent requests
+### "Unable to connect to Copilot CLI" Error
+
+This error indicates the GitHub Copilot CLI is not properly installed or configured:
+
+1. **Install the Copilot CLI**: Visit https://docs.github.com/copilot/cli for installation instructions
+2. **Ensure CLI is in PATH**: Run `which copilot` or `copilot --version` to verify installation
+3. **Authenticate the CLI**: Run `copilot auth login` to authenticate with your GitHub account
+4. **Check Copilot subscription**: Ensure you have an active GitHub Copilot subscription
+
+### Authentication Errors
+
+- Verify your GitHub token is valid and has Copilot permissions
+- Ensure your GitHub Copilot subscription is active
+- Try regenerating your personal access token
+
+### Connection Issues
+
+- Check your internet connectivity
+- Verify the Copilot CLI is running: `copilot --version`
+- Check Home Assistant logs for detailed error messages
+
+### Slow Responses
+
+- Try using a faster model (e.g., GPT-3.5 Turbo or GPT-4o-mini)
+- Check your network latency
+- Reduce concurrent requests
 
 For more help, see the [agents.md](agents.md) documentation or [open an issue][issues].
 

@@ -119,34 +119,48 @@ Different models offer various capabilities:
 
 ## Troubleshooting
 
-### Authentication Errors
+### Copilot CLI Not Found
 
-**Issue**: "Invalid GitHub token" error during setup
+**Issue**: "Unable to connect to Copilot CLI" or "GitHub Copilot CLI not found"
 
 **Solutions**:
-- Verify your GitHub token is correct
+1. Install the GitHub Copilot CLI from https://docs.github.com/copilot/cli
+2. Verify installation by running `copilot --version` in a terminal
+3. Ensure the CLI is in your PATH (common locations: `~/.local/bin`, `/usr/local/bin`)
+4. Authenticate the CLI by running `copilot auth login`
+5. Check that your GitHub account has an active Copilot subscription
+
+### Authentication Errors
+
+**Issue**: "Invalid GitHub token" or "Authentication failed" error during setup
+
+**Solutions**:
+- Verify your GitHub token is correct and not expired
 - Ensure your GitHub Copilot subscription is active
-- Check that the token has necessary permissions
-- Try generating a new token
+- Check that the token has necessary permissions (Copilot access)
+- Run `copilot auth login` to authenticate the CLI
+- Try generating a new personal access token
 
 ### Connection Errors
 
-**Issue**: "Unable to connect to GitHub Copilot SDK"
+**Issue**: "Unable to connect to GitHub Copilot SDK" or communication errors
 
 **Solutions**:
 - Check your internet connection
 - Verify Home Assistant can reach external APIs
-- Check GitHub API status
-- Review Home Assistant logs for detailed error messages
+- Ensure the Copilot CLI is properly installed and authenticated
+- Check GitHub API status at https://www.githubstatus.com/
+- Review Home Assistant logs (`Settings` → `System` → `Logs`) for detailed error messages
 
 ### No Response or Slow Responses
 
 **Issue**: Conversation takes too long or times out
 
 **Solutions**:
-- Try a faster model (GPT-3.5 Turbo)
+- Try a faster model (GPT-3.5 Turbo or GPT-4o-mini)
 - Check your network latency
 - Verify API rate limits aren't exceeded
+- Check if the Copilot service is experiencing issues
 
 ### Conversation History Issues
 
