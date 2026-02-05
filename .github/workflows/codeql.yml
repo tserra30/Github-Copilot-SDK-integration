@@ -1,0 +1,50 @@
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '25 3 * * 3'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: actions
+          build-mode: none
+        - language: python
+          build-mode: none
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      
+    - name: Set up Python 3.13
+      if: matrix.language == 'python'
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      with:
+        python-version: '3.13'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@baf56f3b32c0759f0d68b6d924db2c4b4edccdd4 # v3.32.1
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        # This stops the 'pypi is failing' error by skipping auto-dependency resolution
+        setup-python-dependencies: false
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@baf56f3b32c0759f0d68b6d924db2c4b4edccdd4 # v3.32.1
+      with:
+        category: "/language:${{matrix.language}}"
