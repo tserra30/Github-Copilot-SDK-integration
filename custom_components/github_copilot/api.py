@@ -271,10 +271,7 @@ class GitHubCopilotApiClient:
         status = CliInstallationStatus()
 
         base_suggestions = [
-            (
-                "Install the GitHub Copilot CLI: "
-                "https://docs.github.com/copilot/cli"
-            ),
+            ("Install the GitHub Copilot CLI: https://docs.github.com/copilot/cli"),
             (
                 "Ensure the CLI is in your PATH or set COPILOT_CLI_PATH to its "
                 "full path."
@@ -345,8 +342,7 @@ class GitHubCopilotApiClient:
 
         if explicit_requested and not cli_path:
             status.error_details = (
-                f"Copilot CLI path '{cli_to_check}' was not found or is not "
-                "executable."
+                f"Copilot CLI path '{cli_to_check}' was not found or is not executable."
             )
             status.suggestions = [
                 *base_suggestions,
@@ -381,8 +377,7 @@ class GitHubCopilotApiClient:
 
         if not status.cli_installed:
             status.error_details = status.error_details or (
-                f"Copilot CLI path '{cli_to_check}' was not found or is not "
-                "executable."
+                f"Copilot CLI path '{cli_to_check}' was not found or is not executable."
             )
             status.suggestions = [
                 *base_suggestions,
