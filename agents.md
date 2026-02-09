@@ -125,10 +125,39 @@ Different models offer various capabilities:
 
 **Solutions**:
 1. Install the GitHub Copilot CLI from https://docs.github.com/copilot/cli
-2. Verify installation by running `copilot --version` in a terminal
+2. Verify installation by running `copilot --version` in a terminal (or set `COPILOT_CLI_PATH` to the binary)
 3. Ensure the CLI is in your PATH (common locations: `~/.local/bin`, `/usr/local/bin`)
 4. Authenticate the CLI by running `copilot auth login`
 5. Check that your GitHub account has an active Copilot subscription
+
+**Home Assistant OS container tips**
+
+- The CLI must be installed **inside** the `homeassistant` container. From the Advanced SSH add-on:
+  ```bash
+  docker exec -it homeassistant /bin/bash
+  apk add github-cli
+  gh extension install github/gh-copilot
+  gh auth login --web
+  ```
+- Persist auth/config:
+  ```bash
+  mkdir -p /config/.gh_config
+  mv /root/.config/gh/* /config/.gh_config/ 2>/dev/null || true
+  export GH_CONFIG_DIR=/config/.gh_config
+  ```
+- Auto-reinstall on boot with a shell command + automation:
+  ```yaml
+  shell_command:
+    install_copilot_cli: "apk add --no-cache github-cli && gh extension install github/gh-copilot || true"
+
+  automation:
+    - alias: "Ensure Copilot CLI on boot"
+      trigger:
+        - platform: homeassistant
+          event: start
+      action:
+        - service: shell_command.install_copilot_cli
+  ```
 
 ### Authentication Errors
 

@@ -270,8 +270,19 @@ class GitHubCopilotApiClient:
         """Check if GitHub Copilot CLI is installed and accessible."""
         status = CliInstallationStatus()
 
-        # Check for copilot CLI in PATH
-        cli_path = shutil.which("copilot")
+        configured_cli = (
+            self._client_options.get("cli_path")
+            or os.environ.get("COPILOT_CLI_PATH")
+            or "copilot"
+        )
+
+        # Check for copilot CLI in PATH or at an explicit location
+        cli_path = shutil.which(configured_cli)
+        if not cli_path:
+            candidate_path = Path(configured_cli).expanduser()
+            if candidate_path.is_file() and os.access(candidate_path, os.X_OK):
+                cli_path = str(candidate_path)
+
         if cli_path:
             status.cli_installed = True
             status.cli_path = cli_path
@@ -289,10 +300,19 @@ class GitHubCopilotApiClient:
                     break
 
         if not status.cli_installed:
+            status.error_details = (
+                f"Copilot CLI path '{configured_cli}' was not found or is not "
+                "executable."
+            )
+
+        if not status.cli_installed:
             status.suggestions = [
                 "Install the GitHub Copilot CLI: https://docs.github.com/copilot/cli",
-                "Ensure the CLI is in your PATH",
-                "Check if you have an active GitHub Copilot subscription",
+                "Ensure the CLI is in your PATH or set COPILOT_CLI_PATH to the "
+                "binary location",
+                "If running Home Assistant OS, install the CLI inside the core "
+                "container (not only the SSH add-on) and make auth persistent with "
+                "GH_CONFIG_DIR=/config/.gh_config",
             ]
 
         return status
