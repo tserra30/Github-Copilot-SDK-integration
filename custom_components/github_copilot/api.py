@@ -270,18 +270,59 @@ class GitHubCopilotApiClient:
         """Check if GitHub Copilot CLI is installed and accessible."""
         status = CliInstallationStatus()
 
-        configured_cli = (
-            self._client_options.get("cli_path")
-            or os.environ.get("COPILOT_CLI_PATH")
-            or "copilot"
+        base_suggestions = [
+            (
+                "Install the GitHub Copilot CLI: "
+                "https://docs.github.com/copilot/cli"
+            ),
+            (
+                "Ensure the CLI is in your PATH or set COPILOT_CLI_PATH to its "
+                "full path."
+            ),
+        ]
+
+        cli_candidates = [
+            self._client_options.get("cli_path"),
+            os.environ.get("COPILOT_CLI_PATH"),
+            "copilot",
+        ]
+        cli_to_check = next(
+            (value for value in cli_candidates if value not in (None, "")),
+            "copilot",
         )
 
         # Check for copilot CLI in PATH or at an explicit location
-        cli_path = shutil.which(configured_cli)
-        if not cli_path:
-            candidate_path = Path(configured_cli).expanduser()
-            if candidate_path.is_file() and os.access(candidate_path, os.X_OK):
-                cli_path = str(candidate_path)
+        cli_path = shutil.which(cli_to_check)
+        explicit_path: Path | None = None
+        candidate_path: Path | None = None
+        path_parsing_failed = False
+        try:
+            candidate_path = Path(cli_to_check).expanduser()
+        except (ValueError, OSError, RuntimeError) as error:
+            status.error_details = (
+                f"Copilot CLI path '{cli_to_check}' is invalid: {error}"
+            )
+            path_parsing_failed = True
+
+        if path_parsing_failed:
+            status.suggestions = list(base_suggestions)
+            return status
+
+        if cli_to_check != "copilot" and (
+            candidate_path.is_absolute()
+            or os.sep in cli_to_check
+            or (os.altsep and os.altsep in cli_to_check)
+        ):
+            explicit_path = candidate_path
+
+        if not cli_path and explicit_path and explicit_path.exists():
+            if explicit_path.is_file() and os.access(explicit_path, os.X_OK):
+                cli_path = str(explicit_path)
+            else:
+                status.error_details = (
+                    f"Copilot CLI path '{explicit_path}' exists but is not "
+                    "executable. Adjust permissions (e.g., chmod +x) and retry."
+                )
 
         if cli_path:
             status.cli_installed = True
@@ -300,19 +341,17 @@ class GitHubCopilotApiClient:
                     break
 
         if not status.cli_installed:
-            status.error_details = (
-                f"Copilot CLI path '{configured_cli}' was not found or is not "
+            status.error_details = status.error_details or (
+                f"Copilot CLI path '{cli_to_check}' was not found or is not "
                 "executable."
             )
-
-        if not status.cli_installed:
             status.suggestions = [
-                "Install the GitHub Copilot CLI: https://docs.github.com/copilot/cli",
-                "Ensure the CLI is in your PATH or set COPILOT_CLI_PATH to the "
-                "binary location",
-                "If running Home Assistant OS, install the CLI inside the core "
-                "container (not only the SSH add-on) and make auth persistent with "
-                "GH_CONFIG_DIR=/config/.gh_config",
+                *base_suggestions,
+                (
+                    "If running Home Assistant OS, install the CLI inside the core "
+                    "container (not only the SSH add-on) and make auth persistent "
+                    "with GH_CONFIG_DIR=/config/.gh_config."
+                ),
             ]
 
         return status

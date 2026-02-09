@@ -114,18 +114,20 @@ The Copilot CLI must be available **inside the Home Assistant Core container**, 
    export GH_CONFIG_DIR=/config/.gh_config
    ```
 4. Make the install persistent across restarts with a shell command + automation:
-   ```yaml
-   shell_command:
-     install_copilot_cli: "apk add --no-cache github-cli && gh extension install github/gh-copilot || true"
+```yaml
+# configuration.yaml (automation can live in automations.yaml if you split config)
+shell_command:
+  install_copilot_cli: "apk add --no-cache github-cli && gh extension install github/gh-copilot || true"
 
-   automation:
-     - alias: "Ensure Copilot CLI on boot"
-       trigger:
-         - platform: homeassistant
-           event: start
-       action:
-         - service: shell_command.install_copilot_cli
-   ```
+automation:
+  - alias: "Ensure Copilot CLI on boot"
+    id: ensure_copilot_cli
+    trigger:
+      - platform: homeassistant
+        event: start
+    action:
+      - service: shell_command.install_copilot_cli
+```
    If the CLI binary lives outside PATH, set `COPILOT_CLI_PATH` to its location in your environment.
 
 ### Authentication Errors

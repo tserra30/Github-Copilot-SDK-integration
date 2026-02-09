@@ -147,11 +147,13 @@ Different models offer various capabilities:
   ```
 - Auto-reinstall on boot with a shell command + automation:
   ```yaml
+  # configuration.yaml (automation can be in automations.yaml if split)
   shell_command:
     install_copilot_cli: "apk add --no-cache github-cli && gh extension install github/gh-copilot || true"
 
   automation:
     - alias: "Ensure Copilot CLI on boot"
+      id: ensure_copilot_cli
       trigger:
         - platform: homeassistant
           event: start
