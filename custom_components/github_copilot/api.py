@@ -281,15 +281,26 @@ class GitHubCopilotApiClient:
             ),
         ]
 
-        cli_candidates = [
+        raw_cli_candidates = [
             self._client_options.get("cli_path"),
             os.environ.get("COPILOT_CLI_PATH"),
             "copilot",
         ]
-        cli_to_check = next(
-            (value for value in cli_candidates if value not in (None, "")),
-            "copilot",
+        cli_candidates = [
+            candidate.strip()
+            for candidate in raw_cli_candidates
+            if isinstance(candidate, str) and candidate.strip()
+        ]
+        cli_to_check = cli_candidates[0] if cli_candidates else "copilot"
+        explicit_value = next(
+            (
+                candidate.strip()
+                for candidate in raw_cli_candidates[:2]
+                if isinstance(candidate, str) and candidate.strip()
+            ),
+            None,
         )
+        explicit_requested = explicit_value is not None
 
         # Check for copilot CLI in PATH or at an explicit location
         cli_path = shutil.which(cli_to_check)
@@ -315,7 +326,7 @@ class GitHubCopilotApiClient:
         ):
             explicit_path = candidate_path
 
-        if not cli_path and explicit_path and explicit_path.exists():
+        if explicit_requested and explicit_path and explicit_path.exists():
             if explicit_path.is_file() and os.access(explicit_path, os.X_OK):
                 cli_path = str(explicit_path)
             else:
@@ -323,10 +334,38 @@ class GitHubCopilotApiClient:
                     f"Copilot CLI path '{explicit_path}' exists but is not "
                     "executable. Adjust permissions (e.g., chmod +x) and retry."
                 )
+                status.suggestions = [
+                    *base_suggestions,
+                    (
+                        "An explicit CLI path was provided; ensure it exists and is "
+                        "executable."
+                    ),
+                ]
+                return status
+
+        if explicit_requested and not cli_path:
+            status.error_details = (
+                f"Copilot CLI path '{cli_to_check}' was not found or is not "
+                "executable."
+            )
+            status.suggestions = [
+                *base_suggestions,
+                (
+                    "An explicit CLI path was provided; ensure it exists and is "
+                    "executable."
+                ),
+                (
+                    "If running Home Assistant OS, install the CLI inside the core "
+                    "container (not only the SSH add-on) and make auth persistent "
+                    "with GH_CONFIG_DIR=/config/.gh_config."
+                ),
+            ]
+            return status
 
         if cli_path:
             status.cli_installed = True
             status.cli_path = cli_path
+            status.error_details = ""
         else:
             # Also check common installation locations
             common_paths = [

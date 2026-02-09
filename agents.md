@@ -134,22 +134,28 @@ Different models offer various capabilities:
 
 - The CLI must be installed **inside** the `homeassistant` container. From the Advanced SSH add-on:
   ```bash
-  docker exec -it homeassistant /bin/bash
-  apk add github-cli
-  gh extension install github/gh-copilot
-  gh auth login --web
+  docker exec -it homeassistant /bin/sh   # or /bin/bash if available
   ```
+- Install the Copilot CLI inside this container following https://docs.github.com/copilot/cli. Use the package manager that matches your base OS (e.g., `apk` on Alpine, `apt` on Debian/Ubuntu) to install prerequisites, then place the `copilot` binary in PATH. Example for Alpine/amd64:
+  ```bash
+  apk add --no-cache curl ca-certificates
+  curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /usr/local/bin/copilot
+  chmod +x /usr/local/bin/copilot
+  copilot --version
+  copilot auth login
+  ```
+  For Debian/Ubuntu containers, adapt with `apt-get` and the matching binary for your architecture.
 - Persist auth/config:
   ```bash
   mkdir -p /config/.gh_config
   mv /root/.config/gh/* /config/.gh_config/ 2>/dev/null || true
   export GH_CONFIG_DIR=/config/.gh_config
   ```
-- Auto-reinstall on boot with a shell command + automation:
+- Auto-reinstall on boot with a shell command + automation (adjust install command for your base OS/architecture):
   ```yaml
   # configuration.yaml (automation can be in automations.yaml if split)
   shell_command:
-    install_copilot_cli: "apk add --no-cache github-cli && gh extension install github/gh-copilot || true"
+    install_copilot_cli: "apk add --no-cache curl ca-certificates && curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /usr/local/bin/copilot && chmod +x /usr/local/bin/copilot"
 
   automation:
     - alias: "Ensure Copilot CLI on boot"
