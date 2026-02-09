@@ -1,5 +1,6 @@
 colorlog==6.10.1
 github-copilot-sdk==0.1.21
-homeassistant==2026.2.0
+# Pin to a released Home Assistant version so CI dependency installs succeed
+homeassistant==2024.12.3
 pip>=21.3.1
 ruff==0.15.0
