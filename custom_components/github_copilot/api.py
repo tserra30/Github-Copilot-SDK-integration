@@ -414,9 +414,14 @@ class GitHubCopilotApiClient:
             try:
                 await client.start()
             except FileNotFoundError as exception:
+                errno_info = (
+                    f" (errno: {exception.errno})"
+                    if hasattr(exception, "errno") and exception.errno
+                    else ""
+                )
                 LOGGER.error(
-                    "Copilot CLI executable not found (%s)",
-                    type(exception).__name__,
+                    "Copilot CLI executable not found%s",
+                    errno_info,
                 )
                 msg = (
                     "GitHub Copilot CLI executable not found. "
@@ -424,9 +429,14 @@ class GitHubCopilotApiClient:
                 )
                 raise GitHubCopilotApiClientCommunicationError(msg) from exception
             except PermissionError as exception:
+                errno_info = (
+                    f" (errno: {exception.errno})"
+                    if hasattr(exception, "errno") and exception.errno
+                    else ""
+                )
                 LOGGER.error(
-                    "Permission denied when starting Copilot CLI (%s)",
-                    type(exception).__name__,
+                    "Permission denied when starting Copilot CLI%s",
+                    errno_info,
                 )
                 msg = (
                     "Permission denied when starting GitHub Copilot CLI. "
