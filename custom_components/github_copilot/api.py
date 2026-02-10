@@ -390,6 +390,22 @@ class GitHubCopilotApiClient:
 
         return status
 
+    @staticmethod
+    def _format_errno_info(exception: Exception) -> str:
+        """
+        Format errno info from an exception without exposing path details.
+
+        Args:
+            exception: The exception to extract errno from
+
+        Returns:
+            A formatted string with errno if available, empty string otherwise
+
+        """
+        if hasattr(exception, "errno") and exception.errno:
+            return f" (errno: {exception.errno})"
+        return ""
+
     async def _ensure_client(self) -> copilot.CopilotClient:
         """Ensure the Copilot SDK client is started."""
         async with self._client_lock:
@@ -414,35 +430,25 @@ class GitHubCopilotApiClient:
             try:
                 await client.start()
             except FileNotFoundError as exception:
-                errno_info = (
-                    f" (errno: {exception.errno})"
-                    if hasattr(exception, "errno") and exception.errno
-                    else ""
-                )
                 LOGGER.error(
                     "Copilot CLI executable not found%s",
-                    errno_info,
+                    self._format_errno_info(exception),
                 )
                 msg = (
                     "GitHub Copilot CLI executable not found. "
                     "Please install it from https://docs.github.com/copilot/cli"
                 )
-                raise GitHubCopilotApiClientCommunicationError(msg) from exception
+                raise GitHubCopilotApiClientCommunicationError(msg) from None
             except PermissionError as exception:
-                errno_info = (
-                    f" (errno: {exception.errno})"
-                    if hasattr(exception, "errno") and exception.errno
-                    else ""
-                )
                 LOGGER.error(
                     "Permission denied when starting Copilot CLI%s",
-                    errno_info,
+                    self._format_errno_info(exception),
                 )
                 msg = (
                     "Permission denied when starting GitHub Copilot CLI. "
                     "Please check file permissions."
                 )
-                raise GitHubCopilotApiClientCommunicationError(msg) from exception
+                raise GitHubCopilotApiClientCommunicationError(msg) from None
             except ConnectionRefusedError as exception:
                 LOGGER.error(
                     "Connection refused by Copilot CLI: %s",
