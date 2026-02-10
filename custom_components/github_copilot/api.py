@@ -308,7 +308,8 @@ class GitHubCopilotApiClient:
             candidate_path = Path(cli_to_check).expanduser()
         except (ValueError, OSError, RuntimeError) as error:
             status.error_details = (
-                f"Copilot CLI path '{cli_to_check}' is invalid: {error}"
+                "The configured Copilot CLI path is invalid. "
+                f"Details: {error}"
             )
             path_parsing_failed = True
 
