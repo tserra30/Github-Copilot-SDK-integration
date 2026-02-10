@@ -89,9 +89,52 @@ For detailed documentation, see [agents.md](agents.md)
 This error indicates the GitHub Copilot CLI is not properly installed or configured:
 
 1. **Install the Copilot CLI**: Visit https://docs.github.com/copilot/cli for installation instructions
-2. **Ensure CLI is in PATH**: Run `which copilot` or `copilot --version` to verify installation
+2. **Ensure CLI is in PATH**: Run `which copilot` or `copilot --version` to verify installation (or set `COPILOT_CLI_PATH` to the binary)
 3. **Authenticate the CLI**: Run `copilot auth login` to authenticate with your GitHub account
 4. **Check Copilot subscription**: Ensure you have an active GitHub Copilot subscription
+
+#### Home Assistant OS specifics
+
+The Copilot CLI must be available **inside the Home Assistant Core container**, not only the SSH/Terminal add-on. Typical steps:
+
+1. Open the Advanced SSH & Web Terminal add-on and enter the Core container:
+   ```bash
+   docker exec -it homeassistant /bin/sh   # or /bin/bash if available
+   ```
+2. Install the Copilot CLI **inside this container** following the official docs: https://docs.github.com/copilot/cli. Use a package manager appropriate for your base OS (e.g., `apk` on Alpine, `apt` on Debian/Ubuntu) to install prerequisites, then place the `copilot` binary in PATH. Example for Alpine/amd64:
+   ```bash
+   apk add --no-cache curl ca-certificates
+   curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /usr/local/bin/copilot
+   chmod +x /usr/local/bin/copilot
+   copilot --version
+   ```
+   For Debian/Ubuntu containers, adapt by installing dependencies with `apt-get` and downloading the matching `copilot` binary for your architecture.
+3. Authenticate the Copilot CLI in that same shell:
+   ```bash
+   copilot auth login
+   ```
+4. Persist authentication by moving the Copilot CLI config into `/config` and pointing the CLI to it:
+   ```bash
+   mkdir -p /config/.gh_config
+   mv /root/.config/gh/* /config/.gh_config/ 2>/dev/null || true
+   export GH_CONFIG_DIR=/config/.gh_config
+   ```
+5. Make the install persistent across restarts with a shell command + automation (adapt the install command for your base OS/architecture):
+   ```yaml
+   # configuration.yaml (automation can live in automations.yaml if you split config)
+   shell_command:
+     install_copilot_cli: "apk add --no-cache curl ca-certificates && curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /usr/local/bin/copilot && chmod +x /usr/local/bin/copilot"
+
+   automation:
+     - alias: "Ensure Copilot CLI on boot"
+       id: ensure_copilot_cli
+       trigger:
+         - platform: homeassistant
+           event: start
+       action:
+         - service: shell_command.install_copilot_cli
+   ```
+   If the CLI binary lives outside PATH, set `COPILOT_CLI_PATH` to its location in your environment.
 
 ### Authentication Errors
 
