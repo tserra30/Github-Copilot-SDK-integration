@@ -308,7 +308,7 @@ class GitHubCopilotApiClient:
             candidate_path = Path(cli_to_check).expanduser()
         except (ValueError, OSError, RuntimeError) as error:
             status.error_details = (
-                f"The configured Copilot CLI path is invalid. Details: {error}"
+                f"The configured Copilot CLI path is invalid ({type(error).__name__})"
             )
             path_parsing_failed = True
 
@@ -328,7 +328,7 @@ class GitHubCopilotApiClient:
                 cli_path = str(explicit_path)
             else:
                 status.error_details = (
-                    f"Copilot CLI path '{explicit_path}' exists but is not "
+                    "The configured Copilot CLI path exists but is not "
                     "executable. Adjust permissions (e.g., chmod +x) and retry."
                 )
                 status.suggestions = [
@@ -342,7 +342,7 @@ class GitHubCopilotApiClient:
 
         if explicit_requested and not cli_path:
             status.error_details = (
-                f"Copilot CLI path '{cli_to_check}' was not found or is not executable."
+                "The configured Copilot CLI path was not found or is not executable."
             )
             status.suggestions = [
                 *base_suggestions,
@@ -377,7 +377,7 @@ class GitHubCopilotApiClient:
 
         if not status.cli_installed:
             status.error_details = status.error_details or (
-                f"Copilot CLI path '{cli_to_check}' was not found or is not executable."
+                "Copilot CLI was not found in PATH or common installation locations."
             )
             status.suggestions = [
                 *base_suggestions,
@@ -415,8 +415,8 @@ class GitHubCopilotApiClient:
                 await client.start()
             except FileNotFoundError as exception:
                 LOGGER.error(
-                    "Copilot CLI executable not found: %s",
-                    exception,
+                    "Copilot CLI executable not found (%s)",
+                    type(exception).__name__,
                 )
                 msg = (
                     "GitHub Copilot CLI executable not found. "
@@ -425,8 +425,8 @@ class GitHubCopilotApiClient:
                 raise GitHubCopilotApiClientCommunicationError(msg) from exception
             except PermissionError as exception:
                 LOGGER.error(
-                    "Permission denied when starting Copilot CLI: %s",
-                    exception,
+                    "Permission denied when starting Copilot CLI (%s)",
+                    type(exception).__name__,
                 )
                 msg = (
                     "Permission denied when starting GitHub Copilot CLI. "
