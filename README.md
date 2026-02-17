@@ -202,7 +202,7 @@ SOFTWARE.
 
 **Note**: This integration is not officially affiliated with GitHub or Microsoft.
 ## Original MIT license from integration blueprint by [@ludeeus](https://github.com/ludeeus)
-
+```
 MIT License
 
 Copyright (c) 2019 - 2025  Joakim Sørensen @ludeeus
@@ -224,7 +224,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
+```
 [commits-shield]: https://img.shields.io/github/commit-activity/y/tserra30/Github-Copilot-SDK-integration.svg?style=for-the-badge
 [commits]: https://github.com/tserra30/Github-Copilot-SDK-integration/commits/main
 [hacs]: https://github.com/hacs/integration
