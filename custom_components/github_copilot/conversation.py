@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING, Literal
 
 from homeassistant.components import conversation
@@ -54,6 +55,68 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         self._attr_name = "GitHub Copilot"
         self._attr_unique_id = f"{config_entry.entry_id}-conversation"
         self.sessions: dict[str, CopilotSessionContext] = {}
+        self._session_last_used: dict[str, float] = {}
+        # Session timeout: 1 hour of inactivity
+        self._session_timeout = 3600
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Clean up sessions when entity is removed."""
+        LOGGER.debug("Cleaning up %d Copilot sessions", len(self.sessions))
+        client = None
+        try:
+            client = self.entry.runtime_data.client
+        except AttributeError:
+            LOGGER.warning(
+                "Unable to access client during cleanup - may have been removed"
+            )
+            return
+
+        # Clean up all sessions
+        session_ids = list(self.sessions.keys())
+        for session_id in session_ids:
+            try:
+                await client.async_end_session(session_id)
+                LOGGER.debug("Cleaned up session %s", session_id)
+            except Exception as err:  # noqa: BLE001
+                LOGGER.error(
+                    "Failed to clean up session %s: %s",
+                    session_id,
+                    type(err).__name__,
+                )
+        self.sessions.clear()
+        self._session_last_used.clear()
+
+    async def _cleanup_expired_sessions(self) -> None:
+        """Remove expired sessions that haven't been used recently."""
+        current_time = time.time()
+        expired_sessions = [
+            session_id
+            for session_id, last_used in self._session_last_used.items()
+            if current_time - last_used > self._session_timeout
+        ]
+
+        if not expired_sessions:
+            return
+
+        LOGGER.debug("Cleaning up %d expired sessions", len(expired_sessions))
+        try:
+            client = self.entry.runtime_data.client
+        except AttributeError:
+            LOGGER.warning("Unable to access client for session cleanup")
+            return
+
+        for session_id in expired_sessions:
+            try:
+                await client.async_end_session(session_id)
+                self.sessions.pop(session_id, None)
+                self._session_last_used.pop(session_id, None)
+                LOGGER.debug("Expired session %s cleaned up", session_id)
+            except Exception as err:  # noqa: BLE001
+                LOGGER.error(
+                    "Failed to cleanup expired session %s: %s",
+                    session_id,
+                    type(err).__name__,
+                )
 
     @property
     def supported_languages(self) -> list[str] | Literal["*"]:
@@ -80,7 +143,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         language: str,
     ) -> tuple[CopilotSessionContext | None, conversation.ConversationResult | None]:
         """Ensure a session exists, returning session and optional error result."""
+        # Clean up expired sessions periodically
+        await self._cleanup_expired_sessions()
+
         if conversation_id in self.sessions:
+            # Update last used timestamp
+            self._session_last_used[conversation_id] = time.time()
             return self.sessions[conversation_id], None
 
         error_result: conversation.ConversationResult | None = None
@@ -89,6 +157,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             client = self.entry.runtime_data.client
             session_context = await client.async_create_session()
             self.sessions[conversation_id] = session_context
+            self._session_last_used[conversation_id] = time.time()
         except GitHubCopilotApiClientAuthenticationError as err:
             LOGGER.error("Authentication error creating session: %s", err)
             error_result = self._create_error_result(
@@ -173,6 +242,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         except GitHubCopilotApiClientAuthenticationError as err:
             LOGGER.error("Authentication error during conversation: %s", err)
             self.sessions.pop(conversation_id, None)
+            self._session_last_used.pop(conversation_id, None)
             result = self._create_error_result(
                 user_input.language,
                 conversation_id,
@@ -182,6 +252,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         except GitHubCopilotApiClientCommunicationError as err:
             LOGGER.error("Communication error during conversation: %s", err)
             self.sessions.pop(conversation_id, None)
+            self._session_last_used.pop(conversation_id, None)
             result = self._create_error_result(
                 user_input.language,
                 conversation_id,
@@ -191,6 +262,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         except GitHubCopilotApiClientError as err:
             LOGGER.error("Error processing conversation: %s", err)
             self.sessions.pop(conversation_id, None)
+            self._session_last_used.pop(conversation_id, None)
             result = self._create_error_result(
                 user_input.language,
                 conversation_id,
