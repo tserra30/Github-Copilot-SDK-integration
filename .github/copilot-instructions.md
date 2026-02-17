@@ -94,19 +94,19 @@ custom_components/github_copilot/
 
 2. **Lint code** (required before commits):
    ```bash
-   python3 -m ruff check custom_components/github_copilot/
+   python3 -m ruff check .
    ```
    - Takes 1-2 seconds
    - Must pass with no errors before committing
-   - Auto-fix with: `python3 -m ruff check --fix custom_components/github_copilot/`
+   - Auto-fix with: `python3 -m ruff check --fix .`
 
 3. **Check formatting** (required before commits):
    ```bash
-   python3 -m ruff format custom_components/github_copilot/ --check
+   python3 -m ruff format . --check
    ```
    - Takes <1 second
    - Must show "files already formatted"
-   - Auto-fix with: `python3 -m ruff format custom_components/github_copilot/`
+   - Auto-fix with: `python3 -m ruff format .`
 
 4. **Run Home Assistant validation** (CI requirement):
    - Hassfest validation checks integration manifest, structure, and dependencies
@@ -120,7 +120,7 @@ The repository uses three GitHub Actions workflows:
 1. **Lint workflow** (`.github/workflows/lint.yml`):
    - Triggers: Push/PR to main branch
    - Python version: 3.13.2
-   - Checks: `ruff check` and `ruff format --check`
+   - Checks: `ruff check .` and `ruff format . --check`
    - Must pass before merge
 
 2. **Validate workflow** (`.github/workflows/validate.yml`):
@@ -134,8 +134,8 @@ The repository uses three GitHub Actions workflows:
    - Scans for vulnerabilities
 
 ### Before Committing - Required Checks
-1. Run linter: `python3 -m ruff check custom_components/github_copilot/` (must show "All checks passed!")
-2. Check formatting: `python3 -m ruff format custom_components/github_copilot/ --check` (must show "files already formatted")
+1. Run linter: `python3 -m ruff check .` (must show "All checks passed!")
+2. Check formatting: `python3 -m ruff format . --check` (must show "files already formatted")
 3. Test in a Home Assistant instance (manual testing)
 4. Verify configuration flow works
 5. Test conversation agent functionality
@@ -279,8 +279,8 @@ When adding new features:
 - `.github/workflows/codeql.yml` - Security scanning
 
 ### Scripts
-- `scripts/setup` - Install dependencies (`pip install -r requirements.txt`)
-- `scripts/lint` - Format and fix code (`ruff format . && ruff check . --fix`)
+- `scripts/setup` - Install dependencies (`python3 -m pip install --requirement requirements.txt`)
+- `scripts/lint` - Format and fix code (`ruff format . && ruff check . --fix`) - Note: This script uses `ruff` directly as it's in the dev environment PATH
 
 ## Resources
 
@@ -298,8 +298,8 @@ When adding new features:
 
 When working with this codebase:
 1. Always run `python3 -m pip install -r requirements.txt` first if starting fresh
-2. Always lint with `python3 -m ruff check` before committing
-3. Use `python3 -m ruff` not `ruff` command directly
+2. Always lint with `python3 -m ruff check .` before committing
+3. Use `python3 -m ruff` not `ruff` command directly (except in scripts/lint which uses `ruff` directly)
 4. All code must be async - use `async`/`await` for I/O operations
 5. Follow Home Assistant patterns - check existing files for examples
 6. Test manually in Home Assistant - no automated tests exist
