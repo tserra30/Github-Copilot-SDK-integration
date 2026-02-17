@@ -72,22 +72,82 @@ custom_components/github_copilot/
 ## Development Workflow
 
 ### Setup
-1. Use the provided dev container for consistent environment
-2. Configuration is in `config/configuration.yaml`
-3. Test changes in the standalone Home Assistant instance
+1. Use the provided dev container for consistent environment:
+   - Image: `mcr.microsoft.com/devcontainers/python:3.13`
+   - Auto-runs: `scripts/setup` post-create (installs dependencies)
+   - Port 8123 forwarded for Home Assistant access
+2. Manual setup: `python3 -m pip install -r requirements.txt` (takes ~60-90 seconds)
+3. Configuration is in `config/configuration.yaml`
+4. Test changes in the standalone Home Assistant instance
 
-### Before Committing
-1. Run linter: `ruff check custom_components/github_copilot/`
-2. Test in a Home Assistant instance
-3. Verify configuration flow works
-4. Test conversation agent functionality
-5. Check error handling
+### Build and Validation Commands
+
+**IMPORTANT: Always run commands in this exact order to avoid errors:**
+
+1. **Install dependencies** (required first):
+   ```bash
+   python3 -m pip install -r requirements.txt
+   ```
+   - Takes 60-90 seconds on first run
+   - Required before any other commands
+   - Run from repository root
+
+2. **Lint code** (required before commits):
+   ```bash
+   python3 -m ruff check .
+   ```
+   - Takes 1-2 seconds
+   - Must pass with no errors before committing
+   - Auto-fix with: `python3 -m ruff check --fix .`
+
+3. **Check formatting** (required before commits):
+   ```bash
+   python3 -m ruff format . --check
+   ```
+   - Takes <1 second
+   - Must show "files already formatted"
+   - Auto-fix with: `python3 -m ruff format .`
+
+4. **Run Home Assistant validation** (CI requirement):
+   - Hassfest validation checks integration manifest, structure, and dependencies
+   - HACS validation ensures repository meets HACS requirements
+   - These run automatically in CI - no local command available
+
+### CI/CD Workflows
+
+The repository uses three GitHub Actions workflows:
+
+1. **Lint workflow** (`.github/workflows/lint.yml`):
+   - Triggers: Push/PR to main branch
+   - Python version: 3.13.2
+   - Checks: `ruff check .` and `ruff format . --check`
+   - Must pass before merge
+
+2. **Validate workflow** (`.github/workflows/validate.yml`):
+   - Triggers: Push/PR to main, daily schedule, manual
+   - Runs hassfest validation (Home Assistant structure check)
+   - Runs HACS validation (custom integration requirements)
+   - Must pass before merge
+
+3. **CodeQL workflow** (`.github/workflows/codeql.yml`):
+   - Runs security analysis
+   - Scans for vulnerabilities
+
+### Before Committing - Required Checks
+1. Run linter: `python3 -m ruff check .` (must show "All checks passed!")
+2. Check formatting: `python3 -m ruff format . --check` (must show "files already formatted")
+3. Test in a Home Assistant instance (manual testing)
+4. Verify configuration flow works
+5. Test conversation agent functionality
+6. Check error handling
 
 ### Testing Guidelines
+- **No automated tests exist** - all testing is manual
 - Test the integration in a real Home Assistant environment
 - Verify all user-facing features work correctly
 - Test error conditions and edge cases
 - Ensure API rate limiting is handled properly
+- Test with different models (GPT-4o, Claude 3.5 Sonnet, etc.)
 
 ## Common Patterns
 
@@ -172,9 +232,74 @@ When adding new features:
 - Follow Home Assistant's security best practices
 - Keep dependencies up to date
 
+## Common Issues and Workarounds
+
+### Copilot CLI Not Found
+- **Issue**: Integration fails with "Unable to connect to Copilot CLI" 
+- **Cause**: GitHub Copilot CLI not installed or not in PATH
+- **Solution**: 
+  1. Install CLI from https://docs.github.com/copilot/cli
+  2. Ensure it's executable and in PATH: `which copilot` or `copilot --version`
+  3. Authenticate: `copilot auth login`
+  4. For Home Assistant OS: CLI must be in Core container, not SSH add-on
+  5. Set `COPILOT_CLI_PATH` env var if CLI is in non-standard location
+
+### Home Assistant OS Specific Issues
+- **Issue**: CLI works in SSH add-on but not in integration
+- **Cause**: SSH add-on is separate from Core container
+- **Solution**: Install CLI inside Core container (`docker exec -it homeassistant /bin/sh`)
+- Persist auth with: `mkdir -p /config/.gh_config && export GH_CONFIG_DIR=/config/.gh_config`
+- Use automation to reinstall CLI on boot (example in README.md)
+
+### Import/Module Errors
+- **Issue**: `ModuleNotFoundError` or import errors
+- **Cause**: Dependencies not installed
+- **Solution**: Run `python3 -m pip install -r requirements.txt` (takes 60-90 seconds)
+
+### Ruff Command Not Found
+- **Issue**: `bash: ruff: command not found`
+- **Cause**: Ruff not installed or not using python module
+- **Solution**: Use `python3 -m ruff` instead of `ruff` command
+
+## File Locations
+
+### Root Directory Files
+- `.ruff.toml` - Ruff linter configuration
+- `requirements.txt` - Python dependencies (colorlog, github-copilot-sdk==0.1.24, homeassistant==2024.12.3, ruff==0.15.1)
+- `hacs.json` - HACS integration metadata
+- `.devcontainer.json` - Dev container configuration
+- `README.md` - User documentation
+- `agents.md` - Detailed technical documentation
+- `CONTRIBUTING.md` - Contribution guidelines
+- `SECURITY.md` - Security policy
+
+### GitHub Workflows
+- `.github/workflows/lint.yml` - Linting checks (ruff)
+- `.github/workflows/validate.yml` - Hassfest and HACS validation
+- `.github/workflows/codeql.yml` - Security scanning
+
+### Scripts
+- `scripts/setup` - Install dependencies (`python3 -m pip install --requirement requirements.txt`)
+- `scripts/lint` - Format and fix code (`ruff format . && ruff check . --fix`) - Note: This script uses `ruff` directly as it's in the dev environment PATH
+
 ## Resources
 
 - [Home Assistant Developer Documentation](https://developers.home-assistant.io/)
 - [Integration Blueprint](https://github.com/ludeeus/integration_blueprint)
 - Repository issues: https://github.com/tserra30/Github-Copilot-SDK-integration/issues
 - Contributing guidelines: See CONTRIBUTING.md
+
+## Instructions for Coding Agents
+
+**Trust these instructions** - they have been validated and tested. Only search for additional information if:
+- These instructions are incomplete for your specific task
+- You encounter an error not documented here
+- You need to verify current dependency versions
+
+When working with this codebase:
+1. Always run `python3 -m pip install -r requirements.txt` first if starting fresh
+2. Always lint with `python3 -m ruff check .` before committing
+3. Use `python3 -m ruff` not `ruff` command directly (except in scripts/lint which uses `ruff` directly)
+4. All code must be async - use `async`/`await` for I/O operations
+5. Follow Home Assistant patterns - check existing files for examples
+6. Test manually in Home Assistant - no automated tests exist
