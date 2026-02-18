@@ -316,28 +316,46 @@ class GitHubCopilotApiClient:
             status.suggestions = list(base_suggestions)
             return status
 
-        if cli_to_check != "copilot" and (
-            candidate_path.is_absolute()
-            or os.sep in cli_to_check
-            or (os.altsep and os.altsep in cli_to_check)
-        ):
-            explicit_path = candidate_path
+        # Defensive checks before using candidate_path
+        try:
+            if cli_to_check != "copilot" and (
+                candidate_path.is_absolute()
+                or os.sep in cli_to_check
+                or (os.altsep and os.altsep in cli_to_check)
+            ):
+                explicit_path = candidate_path
+        except (AttributeError, OSError, RuntimeError) as error:
+            # If any path check fails, treat it as an invalid path
+            status.error_details = (
+                f"Path validation failed ({type(error).__name__}). "
+                "Please provide a valid CLI path."
+            )
+            status.suggestions = list(base_suggestions)
+            return status
 
-        if explicit_requested and explicit_path and explicit_path.exists():
-            if explicit_path.is_file() and os.access(explicit_path, os.X_OK):
-                cli_path = str(explicit_path)
-            else:
+        if explicit_requested and explicit_path:
+            try:
+                if explicit_path.exists():
+                    if explicit_path.is_file() and os.access(explicit_path, os.X_OK):
+                        cli_path = str(explicit_path)
+                    else:
+                        status.error_details = (
+                            "The configured Copilot CLI path exists but is not "
+                            "executable. Adjust permissions (e.g., chmod +x) and retry."
+                        )
+                        status.suggestions = [
+                            *base_suggestions,
+                            (
+                                "An explicit CLI path was provided; "
+                                "ensure it exists and is executable."
+                            ),
+                        ]
+                        return status
+            except (OSError, RuntimeError) as error:
                 status.error_details = (
-                    "The configured Copilot CLI path exists but is not "
-                    "executable. Adjust permissions (e.g., chmod +x) and retry."
+                    f"Failed to verify CLI path ({type(error).__name__})"
                 )
-                status.suggestions = [
-                    *base_suggestions,
-                    (
-                        "An explicit CLI path was provided; ensure it exists and is "
-                        "executable."
-                    ),
-                ]
+                status.suggestions = list(base_suggestions)
                 return status
 
         if explicit_requested and not cli_path:
@@ -370,10 +388,14 @@ class GitHubCopilotApiClient:
                 Path("/usr/bin/copilot"),
             ]
             for path in common_paths:
-                if path.is_file() and os.access(path, os.X_OK):
-                    status.cli_installed = True
-                    status.cli_path = str(path)
-                    break
+                try:
+                    if path.is_file() and os.access(path, os.X_OK):
+                        status.cli_installed = True
+                        status.cli_path = str(path)
+                        break
+                except (OSError, RuntimeError):
+                    # If we can't check this path, skip to the next one
+                    continue
 
         if not status.cli_installed:
             status.error_details = status.error_details or (
@@ -426,7 +448,25 @@ class GitHubCopilotApiClient:
                 )
                 raise GitHubCopilotApiClientCommunicationError(msg)
 
-            client = copilot.CopilotClient(self._client_options)
+            # Initialize the Copilot client
+            try:
+                client = copilot.CopilotClient(self._client_options)
+            except (TypeError, ValueError) as exception:
+                LOGGER.error(
+                    "Invalid client configuration: %s",
+                    type(exception).__name__,
+                )
+                msg = (
+                    "Invalid Copilot client configuration. Please check your settings."
+                )
+                raise GitHubCopilotApiClientError(msg) from exception
+            except Exception as exception:
+                LOGGER.error(
+                    "Failed to initialize Copilot client: %s",
+                    type(exception).__name__,
+                )
+                msg = f"Unable to initialize Copilot client: {type(exception).__name__}"
+                raise GitHubCopilotApiClientError(msg) from exception
             try:
                 await client.start()
             except FileNotFoundError as exception:

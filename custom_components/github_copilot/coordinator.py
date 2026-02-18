@@ -4,13 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-
-from .api import (
-    GitHubCopilotApiClientAuthenticationError,
-    GitHubCopilotApiClientError,
-)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 if TYPE_CHECKING:
     from .data import GitHubCopilotConfigEntry
@@ -23,12 +17,10 @@ class GitHubCopilotDataUpdateCoordinator(DataUpdateCoordinator):
     config_entry: GitHubCopilotConfigEntry
 
     async def _async_update_data(self) -> Any:
-        """Update data via library."""
-        try:
-            # For conversation agents, we don't need to poll for data
-            # Return empty dict as conversation is event-driven
-            return {}
-        except GitHubCopilotApiClientAuthenticationError as exception:
-            raise ConfigEntryAuthFailed(exception) from exception
-        except GitHubCopilotApiClientError as exception:
-            raise UpdateFailed(exception) from exception
+        """
+        Update data via library.
+
+        For conversation agents, we don't need to poll for data.
+        Conversation processing is event-driven via the conversation entity.
+        """
+        return {}
