@@ -1,0 +1,14 @@
+{
+  "domain": "copilot_assistant",
+  "name": "GitHub Copilot",
+  "documentation": "https://github.com/tserra30/Github-Copilot-SDK-integration",
+  "requirements": [
+    "github-copilot-sdk>=0.1.0"
+  ],
+  "codeowners": [
+    "@tserra30"
+  ],
+  "iot_class": "cloud_polling",
+  "version": "1.0.0",
+  "config_flow": true
+}
