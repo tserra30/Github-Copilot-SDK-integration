@@ -126,7 +126,7 @@ Different models offer various capabilities:
 **Solutions**:
 1. Install the GitHub Copilot CLI from https://docs.github.com/copilot/cli
 2. Verify installation by running `copilot --version` in a terminal (or set `COPILOT_CLI_PATH` to the binary)
-3. Ensure the CLI is in your PATH (common locations: `~/.local/bin`, `/usr/local/bin`)
+3. Ensure the CLI is in your PATH or in an auto-discovered location (`~/.local/bin`, `/usr/local/bin`, `/usr/bin`, `/config`, `/config/bin`)
 4. Authenticate the CLI by running `copilot auth login`
 5. Check that your GitHub account has an active Copilot subscription
 
@@ -136,9 +136,17 @@ Different models offer various capabilities:
   ```bash
   docker exec -it homeassistant /bin/sh   # or /bin/bash if available
   ```
-- Install the Copilot CLI inside this container following https://docs.github.com/copilot/cli. Use the package manager that matches your base OS (e.g., `apk` on Alpine, `apt` on Debian/Ubuntu) to install prerequisites, then place the `copilot` binary in PATH. Example for Alpine/amd64:
+- Install the Copilot CLI inside this container following https://docs.github.com/copilot/cli. You can place the binary in `/config/bin` to persist across updates, or in `/usr/local/bin`. Example for Alpine/amd64:
   ```bash
   apk add --no-cache curl ca-certificates
+  # Option 1: Place in /config/bin (persists, automatically discovered)
+  mkdir -p /config/bin
+  curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /config/bin/copilot
+  chmod +x /config/bin/copilot
+  /config/bin/copilot --version
+  /config/bin/copilot auth login
+  
+  # Option 2: Place in /usr/local/bin (requires reinstall on updates)
   curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /usr/local/bin/copilot
   chmod +x /usr/local/bin/copilot
   copilot --version
@@ -151,7 +159,7 @@ Different models offer various capabilities:
   mv /root/.config/gh/* /config/.gh_config/ 2>/dev/null || true
   export GH_CONFIG_DIR=/config/.gh_config
   ```
-- Auto-reinstall on boot with a shell command + automation (adjust install command for your base OS/architecture):
+- Auto-reinstall on boot with a shell command + automation (only needed if you used Option 2 - `/usr/local/bin`):
   ```yaml
   # configuration.yaml (automation can be in automations.yaml if split)
   shell_command:
@@ -166,6 +174,7 @@ Different models offer various capabilities:
       action:
         - service: shell_command.install_copilot_cli
   ```
+  **Note**: If you used Option 1 (`/config/bin`), this automation is not needed as the binary already persists.
 
 ### Authentication Errors
 
