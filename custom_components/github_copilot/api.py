@@ -386,6 +386,8 @@ class GitHubCopilotApiClient:
                 Path.home() / ".local" / "bin" / "copilot",
                 Path("/usr/local/bin/copilot"),
                 Path("/usr/bin/copilot"),
+                Path("/config/copilot"),
+                Path("/config/bin/copilot"),
             ]
             for path in common_paths:
                 try:
@@ -399,14 +401,18 @@ class GitHubCopilotApiClient:
 
         if not status.cli_installed:
             status.error_details = status.error_details or (
-                "Copilot CLI was not found in PATH or common installation locations."
+                "Copilot CLI was not found in PATH or common installation locations "
+                "(~/.local/bin, /usr/local/bin, /usr/bin, /config, /config/bin)."
             )
             status.suggestions = [
                 *base_suggestions,
                 (
-                    "If running Home Assistant OS, install the CLI inside the core "
-                    "container (not only the SSH add-on) and make auth persistent "
-                    "with GH_CONFIG_DIR=/config/.gh_config."
+                    "If running Home Assistant OS, you can place the CLI binary in "
+                    "/config or /config/bin to persist across updates."
+                ),
+                (
+                    "Make authentication persistent with "
+                    "GH_CONFIG_DIR=/config/.gh_config."
                 ),
             ]
 
