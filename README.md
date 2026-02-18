@@ -101,16 +101,16 @@ The Copilot CLI must be available **inside the Home Assistant Core container**, 
    ```bash
    docker exec -it homeassistant /bin/sh   # or /bin/bash if available
    ```
-2. Install the Copilot CLI **inside this container** following the official docs: https://docs.github.com/copilot/cli. You can place the `copilot` binary in `/config` or `/config/bin` to persist across updates, or in a standard location like `/usr/local/bin`. Example for Alpine/amd64:
+2. Install the Copilot CLI **inside this container** following the official docs: https://docs.github.com/copilot/cli. You can place the `copilot` binary at `/config/copilot` or `/config/bin/copilot` to persist across updates (these paths are automatically discovered by the integration), or in a standard location like `/usr/local/bin/copilot`. Example for Alpine/amd64:
    ```bash
    apk add --no-cache curl ca-certificates
-   # Option 1: Place in /config/bin (persists across updates, automatically discovered)
+   # Option 1: Place at /config/bin/copilot (persists across updates, automatically discovered)
    mkdir -p /config/bin
    curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /config/bin/copilot
    chmod +x /config/bin/copilot
    /config/bin/copilot --version
    
-   # Option 2: Place in /usr/local/bin (requires reinstall on updates)
+   # Option 2: Place at /usr/local/bin/copilot (requires reinstall on updates)
    curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /usr/local/bin/copilot
    chmod +x /usr/local/bin/copilot
    copilot --version
@@ -147,7 +147,7 @@ The Copilot CLI must be available **inside the Home Assistant Core container**, 
    ```
    **Note**: If you used Option 1 (`/config/bin`), this automation is not needed as the binary already persists across updates.
    
-   If the CLI binary lives outside PATH and outside the auto-discovered locations (`/config`, `/config/bin`, `~/.local/bin`, `/usr/local/bin`, `/usr/bin`), set `COPILOT_CLI_PATH` to its location in your environment.
+   If the CLI binary lives outside PATH and outside the auto-discovered locations (`/config/copilot`, `/config/bin/copilot`, `~/.local/bin/copilot`, `/usr/local/bin/copilot`, `/usr/bin/copilot`), set `COPILOT_CLI_PATH` to its location in your environment.
 
 ### Authentication Errors
 

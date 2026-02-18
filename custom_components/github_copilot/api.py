@@ -402,13 +402,14 @@ class GitHubCopilotApiClient:
         if not status.cli_installed:
             status.error_details = status.error_details or (
                 "Copilot CLI was not found in PATH or common installation locations "
-                "(~/.local/bin, /usr/local/bin, /usr/bin, /config, /config/bin)."
+                "(~/.local/bin/copilot, /usr/local/bin/copilot, /usr/bin/copilot, "
+                "/config/copilot, /config/bin/copilot)."
             )
             status.suggestions = [
                 *base_suggestions,
                 (
-                    "If running Home Assistant OS, you can place the CLI binary in "
-                    "/config or /config/bin to persist across updates."
+                    "If running Home Assistant OS, you can place the CLI binary at "
+                    "/config/copilot or /config/bin/copilot to persist across updates."
                 ),
                 (
                     "Make authentication persistent with "

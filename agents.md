@@ -126,7 +126,7 @@ Different models offer various capabilities:
 **Solutions**:
 1. Install the GitHub Copilot CLI from https://docs.github.com/copilot/cli
 2. Verify installation by running `copilot --version` in a terminal (or set `COPILOT_CLI_PATH` to the binary)
-3. Ensure the CLI is in your PATH or in an auto-discovered location (`~/.local/bin`, `/usr/local/bin`, `/usr/bin`, `/config`, `/config/bin`)
+3. Ensure the CLI is in your PATH or in an auto-discovered location (`~/.local/bin/copilot`, `/usr/local/bin/copilot`, `/usr/bin/copilot`, `/config/copilot`, `/config/bin/copilot`)
 4. Authenticate the CLI by running `copilot auth login`
 5. Check that your GitHub account has an active Copilot subscription
 
@@ -136,17 +136,17 @@ Different models offer various capabilities:
   ```bash
   docker exec -it homeassistant /bin/sh   # or /bin/bash if available
   ```
-- Install the Copilot CLI inside this container following https://docs.github.com/copilot/cli. You can place the binary in `/config/bin` to persist across updates, or in `/usr/local/bin`. Example for Alpine/amd64:
+- Install the Copilot CLI inside this container following https://docs.github.com/copilot/cli. You can place the binary at `/config/copilot` or `/config/bin/copilot` to persist across updates (these paths are automatically discovered by the integration), or in `/usr/local/bin/copilot`. Example for Alpine/amd64:
   ```bash
   apk add --no-cache curl ca-certificates
-  # Option 1: Place in /config/bin (persists, automatically discovered)
+  # Option 1: Place at /config/bin/copilot (persists, automatically discovered)
   mkdir -p /config/bin
   curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /config/bin/copilot
   chmod +x /config/bin/copilot
   /config/bin/copilot --version
   /config/bin/copilot auth login
   
-  # Option 2: Place in /usr/local/bin (requires reinstall on updates)
+  # Option 2: Place at /usr/local/bin/copilot (requires reinstall on updates)
   curl -L https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-amd64 -o /usr/local/bin/copilot
   chmod +x /usr/local/bin/copilot
   copilot --version
