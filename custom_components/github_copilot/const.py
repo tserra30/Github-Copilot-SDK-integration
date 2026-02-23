@@ -10,9 +10,11 @@ ATTRIBUTION = "Powered by GitHub Copilot SDK"
 # Configuration constants
 CONF_API_TOKEN = "api_token"  # noqa: S105
 CONF_MODEL = "model"
+CONF_CLI_URL = "cli_url"
 
 # Default values
 DEFAULT_MODEL = "gpt-4o"
+DEFAULT_CLI_URL = ""
 
 # Supported models
 SUPPORTED_MODELS = [
