@@ -5,7 +5,7 @@ description: >
   Runs the GitHub Copilot CLI in headless server mode so the GitHub Copilot
   integration can connect to it remotely. Use this add-on if you cannot install
   the Copilot CLI directly inside the Home Assistant Core container.
-  The server listens on port 8000 (internal network only — not exposed to the host).
+  The server listens on port 8000 (internal network only, not exposed to the host).
 url: https://github.com/tserra30/Github-Copilot-SDK-integration
 arch:
   - aarch64
@@ -16,9 +16,11 @@ arch:
 ports:
   8000/tcp: null
 ports_description:
-  8000/tcp: GitHub Copilot CLI server (internal only)
+  8000/tcp: GitHub Copilot CLI server (internal only, accessible via add-on hostname on Supervisor network)
 options:
   github_token: ""
 schema:
-  github_token: str
+  github_token: password
 init: false
+startup: application
+boot: auto

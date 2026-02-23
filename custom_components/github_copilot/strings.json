@@ -11,13 +11,14 @@
                 "data_description": {
                     "api_token": "Your GitHub personal access token with Copilot permissions",
                     "model": "The AI model to use for conversations",
-                    "cli_url": "URL of the GitHub Copilot Bridge add-on server. Leave empty to use a locally installed Copilot CLI."
+                    "cli_url": "URL of the GitHub Copilot Bridge add-on server. Leave empty to use the locally installed Copilot CLI."
                 }
             }
         },
         "error": {
             "auth": "Authentication failed. Please verify your GitHub token is valid and has Copilot permissions. Ensure you have an active GitHub Copilot subscription.",
             "connection": "Unable to connect to GitHub Copilot CLI. Please verify the Copilot CLI is installed and running (locally or via the add-on), and check the Copilot CLI URL if using the add-on.",
+            "invalid_url": "Invalid URL. Enter a valid HTTP or HTTPS address for the Copilot Bridge add-on (for example, the add-on hostname on port 8000).",
             "unknown": "An unexpected error occurred. Please check the Home Assistant logs for details."
         },
         "abort": {

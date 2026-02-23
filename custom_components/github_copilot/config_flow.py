@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -46,51 +47,60 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         _errors = {}
         if user_input is not None:
             model = user_input.get(CONF_MODEL, DEFAULT_MODEL)
-            try:
-                LOGGER.debug(
-                    "Testing GitHub Copilot credentials with model '%s'",
-                    model,
-                )
-                await self._test_credentials(
-                    api_token=user_input[CONF_API_TOKEN],
-                    model=model,
-                    cli_url=user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL),
-                )
-            except GitHubCopilotApiClientAuthenticationError as exception:
-                LOGGER.warning(
-                    "GitHub Copilot authentication failed: %s",
-                    exception,
-                )
-                _errors["base"] = "auth"
-            except GitHubCopilotApiClientCommunicationError as exception:
-                LOGGER.error(
-                    "Failed to connect to GitHub Copilot CLI: %s",
-                    exception,
-                )
-                _errors["base"] = "connection"
-            except GitHubCopilotApiClientError as exception:
-                LOGGER.exception(
-                    "Unexpected error during GitHub Copilot setup: %s",
-                    exception,
-                )
-                _errors["base"] = "unknown"
-            except Exception as exception:  # noqa: BLE001
-                LOGGER.exception(
-                    "Unexpected error in config flow: %s",
-                    type(exception).__name__,
-                )
-                _errors["base"] = "unknown"
-            else:
-                await self.async_set_unique_id("github_copilot")
-                self._abort_if_unique_id_configured()
-                LOGGER.info(
-                    "GitHub Copilot integration configured with model '%s'",
-                    model,
-                )
-                return self.async_create_entry(
-                    title="GitHub Copilot",
-                    data=user_input,
-                )
+            cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
+
+            # Validate the CLI URL format if provided
+            if cli_url:
+                parsed = urlparse(cli_url)
+                if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                    _errors[CONF_CLI_URL] = "invalid_url"
+
+            if not _errors:
+                try:
+                    LOGGER.debug(
+                        "Testing GitHub Copilot credentials with model '%s'",
+                        model,
+                    )
+                    await self._test_credentials(
+                        api_token=user_input[CONF_API_TOKEN],
+                        model=model,
+                        cli_url=cli_url,
+                    )
+                except GitHubCopilotApiClientAuthenticationError as exception:
+                    LOGGER.warning(
+                        "GitHub Copilot authentication failed: %s",
+                        exception,
+                    )
+                    _errors["base"] = "auth"
+                except GitHubCopilotApiClientCommunicationError as exception:
+                    LOGGER.error(
+                        "Failed to connect to GitHub Copilot CLI: %s",
+                        exception,
+                    )
+                    _errors["base"] = "connection"
+                except GitHubCopilotApiClientError as exception:
+                    LOGGER.exception(
+                        "Unexpected error during GitHub Copilot setup: %s",
+                        exception,
+                    )
+                    _errors["base"] = "unknown"
+                except Exception as exception:  # noqa: BLE001
+                    LOGGER.exception(
+                        "Unexpected error in config flow: %s",
+                        type(exception).__name__,
+                    )
+                    _errors["base"] = "unknown"
+                else:
+                    await self.async_set_unique_id("github_copilot")
+                    self._abort_if_unique_id_configured()
+                    LOGGER.info(
+                        "GitHub Copilot integration configured with model '%s'",
+                        model,
+                    )
+                    return self.async_create_entry(
+                        title="GitHub Copilot",
+                        data=user_input,
+                    )
 
         try:
             return self.async_show_form(
@@ -151,6 +161,8 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Validate credentials."""
         client_options: dict[str, Any] = {"github_token": api_token}
         if cli_url.strip():
+            # The github-copilot-sdk (>=0.1.24) supports a "cli_url" client option
+            # to connect to a remote Copilot CLI server instead of the local binary.
             client_options["cli_url"] = cli_url.strip()
         client = GitHubCopilotApiClient(
             model=model,

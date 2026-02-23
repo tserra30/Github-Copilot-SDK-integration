@@ -82,7 +82,12 @@ To use this integration, you need a GitHub personal access token that can authen
 3. Add the necessary permissions (e.g., Copilot requests)
 4. Keep the token secure — never share it publicly
 
-> If you are using the GitHub Copilot Bridge add-on, the same token is needed both in the add-on configuration and in the integration setup.
+> **Warning — token used in two places**  
+> If you are using the GitHub Copilot Bridge add-on, you **must configure the same GitHub token in both**:
+> 1. The **GitHub Copilot Bridge add-on** Configuration tab, and
+> 2. The **GitHub Copilot integration** setup in Home Assistant.
+>
+> When you rotate, change, or revoke the token you must update it in **both** places. If the two values get out of sync you will see authentication or connection errors until both are updated to the same valid token.
 
 ## Usage
 
