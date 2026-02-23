@@ -11,7 +11,7 @@
                 "data_description": {
                     "api_token": "Your GitHub personal access token with Copilot permissions",
                     "model": "The AI model to use for conversations",
-                    "cli_url": "URL of the GitHub Copilot Bridge add-on server (e.g. http://homeassistant.local:8000). Leave empty to use a locally installed Copilot CLI."
+                    "cli_url": "URL of the GitHub Copilot Bridge add-on server. Leave empty to use a locally installed Copilot CLI."
                 }
             }
         },
