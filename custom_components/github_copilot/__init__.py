@@ -16,7 +16,9 @@ from homeassistant.loader import async_get_loaded_integration
 from .api import GitHubCopilotApiClient
 from .const import (
     CONF_API_TOKEN,
+    CONF_CLI_URL,
     CONF_MODEL,
+    DEFAULT_CLI_URL,
     DEFAULT_MODEL,
     DOMAIN,
     LOGGER,
@@ -47,10 +49,14 @@ async def async_setup_entry(
             name=DOMAIN,
             update_interval=timedelta(hours=1),
         )
+        cli_url = entry.data.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
+        client_options: dict[str, str] = {"github_token": entry.data[CONF_API_TOKEN]}
+        if cli_url:
+            client_options["cli_url"] = cli_url
         entry.runtime_data = GitHubCopilotData(
             client=GitHubCopilotApiClient(
                 model=entry.data.get(CONF_MODEL, DEFAULT_MODEL),
-                client_options={"github_token": entry.data[CONF_API_TOKEN]},
+                client_options=client_options,
             ),
             integration=async_get_loaded_integration(hass, entry.domain),
             coordinator=coordinator,

@@ -2,20 +2,22 @@
     "config": {
         "step": {
             "user": {
-                "description": "Configure GitHub Copilot integration. You'll need a GitHub token for Copilot SDK and the Copilot CLI installed. For more information, visit the [documentation]({documentation_url}).",
+                "description": "Configure GitHub Copilot integration. You'll need a GitHub token for Copilot SDK and either the Copilot CLI installed locally or the GitHub Copilot Bridge add-on running. For more information, visit the [documentation]({documentation_url}).",
                 "data": {
                     "api_token": "GitHub Token",
-                    "model": "Model"
+                    "model": "Model",
+                    "cli_url": "Copilot CLI URL (add-on)"
                 },
                 "data_description": {
                     "api_token": "Your GitHub personal access token with Copilot permissions",
-                    "model": "The AI model to use for conversations"
+                    "model": "The AI model to use for conversations",
+                    "cli_url": "URL of the GitHub Copilot Bridge add-on server (e.g. http://homeassistant.local:8000). Leave empty to use a locally installed Copilot CLI."
                 }
             }
         },
         "error": {
             "auth": "Authentication failed. Please verify your GitHub token is valid and has Copilot permissions. Ensure you have an active GitHub Copilot subscription.",
-            "connection": "Unable to connect to GitHub Copilot CLI. Please verify the Copilot CLI is installed, running, and accessible from Home Assistant. Check your network connection.",
+            "connection": "Unable to connect to GitHub Copilot CLI. Please verify the Copilot CLI is installed and running (locally or via the add-on), and check the Copilot CLI URL if using the add-on.",
             "unknown": "An unexpected error occurred. Please check the Home Assistant logs for details."
         },
         "abort": {

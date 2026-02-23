@@ -16,7 +16,9 @@ from .api import (
 )
 from .const import (
     CONF_API_TOKEN,
+    CONF_CLI_URL,
     CONF_MODEL,
+    DEFAULT_CLI_URL,
     DEFAULT_MODEL,
     DOMAIN,
     LOGGER,
@@ -52,6 +54,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 await self._test_credentials(
                     api_token=user_input[CONF_API_TOKEN],
                     model=model,
+                    cli_url=user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL),
                 )
             except GitHubCopilotApiClientAuthenticationError as exception:
                 LOGGER.warning(
@@ -108,6 +111,14 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                                 mode=selector.SelectSelectorMode.DROPDOWN,
                             ),
                         ),
+                        vol.Optional(
+                            CONF_CLI_URL,
+                            default=DEFAULT_CLI_URL,
+                        ): selector.TextSelector(
+                            selector.TextSelectorConfig(
+                                type=selector.TextSelectorType.URL,
+                            ),
+                        ),
                     },
                 ),
                 errors=_errors,
@@ -135,11 +146,15 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         api_token: str,
         model: str,
+        cli_url: str = DEFAULT_CLI_URL,
     ) -> None:
         """Validate credentials."""
+        client_options: dict[str, Any] = {"github_token": api_token}
+        if cli_url.strip():
+            client_options["cli_url"] = cli_url.strip()
         client = GitHubCopilotApiClient(
             model=model,
-            client_options={"github_token": api_token},
+            client_options=client_options,
         )
         try:
             await client.async_test_connection()

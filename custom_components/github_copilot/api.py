@@ -441,19 +441,23 @@ class GitHubCopilotApiClient:
             if self._client:
                 return self._client
 
-            # First check if CLI is installed
-            cli_status = self._check_cli_installed()
-            if not cli_status.cli_installed:
-                LOGGER.error(
-                    "GitHub Copilot CLI not found. %s",
-                    cli_status.to_user_message(),
-                )
-                msg = (
-                    "GitHub Copilot CLI not found. "
-                    "Please install it from https://docs.github.com/copilot/cli "
-                    "and ensure it's in your PATH."
-                )
-                raise GitHubCopilotApiClientCommunicationError(msg)
+            # Skip local CLI check when a remote CLI URL is configured
+            using_remote_cli = bool(self._client_options.get("cli_url", "").strip())
+
+            if not using_remote_cli:
+                # First check if CLI is installed (only needed for local mode)
+                cli_status = self._check_cli_installed()
+                if not cli_status.cli_installed:
+                    LOGGER.error(
+                        "GitHub Copilot CLI not found. %s",
+                        cli_status.to_user_message(),
+                    )
+                    msg = (
+                        "GitHub Copilot CLI not found. "
+                        "Please install it from https://docs.github.com/copilot/cli "
+                        "and ensure it's in your PATH."
+                    )
+                    raise GitHubCopilotApiClientCommunicationError(msg)
 
             # Initialize the Copilot client
             try:

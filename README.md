@@ -15,7 +15,7 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant using the
 - 🎤 **Voice Assistant Support** - Works with Home Assistant's voice pipeline
 - 🔧 **Configurable Models** - Support for GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, and Claude 3.7 Sonnet
 - 💬 **Context Preservation** - Maintains conversation history within sessions via the SDK
-- ⚠️ **Copilot CLI Required** - The GitHub Copilot SDK uses the Copilot CLI for authentication and runtime
+- 🐳 **Add-on Support** - Run the Copilot CLI as a Home Assistant add-on instead of installing it locally
 
 ## Installation
 
@@ -33,6 +33,33 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant using the
 1. Copy the `custom_components/github_copilot` directory to your Home Assistant `custom_components` directory
 2. Restart Home Assistant
 
+## GitHub Copilot Bridge Add-on (Recommended for Home Assistant OS)
+
+Installing the Copilot CLI inside the Home Assistant Core container can be difficult on Home Assistant OS. The included **GitHub Copilot Bridge** add-on solves this by running the CLI in a dedicated container that the integration connects to over the internal network.
+
+### Installing the Add-on
+
+1. In Home Assistant, go to **Settings** → **Add-ons** → **Add-on Store**
+2. Click the **⋮** menu (top-right) and choose **Repositories**
+3. Add this repository URL: `https://github.com/tserra30/Github-Copilot-SDK-integration`
+4. Find **GitHub Copilot Bridge** in the store and click **Install**
+5. Go to the add-on's **Configuration** tab and set your GitHub token:
+   ```yaml
+   github_token: "ghp_yourTokenHere"
+   ```
+6. Start the add-on
+7. Check the **Log** tab to confirm it started successfully
+
+### Finding the Add-on Hostname
+
+The integration needs to know the URL of the running add-on. Within Home Assistant's internal network the add-on is reachable via its hostname, which you can find in the add-on **Info** tab (shown next to "Hostname"). The URL will be:
+
+```
+http://<hostname>:8000
+```
+
+For example: `http://a1b2c3d4_github_copilot_bridge:8000`
+
 ## Configuration
 
 ### Setup via UI
@@ -40,18 +67,22 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant using the
 1. Go to **Settings** → **Devices & Services**
 2. Click **Add Integration**
 3. Search for **GitHub Copilot**
-4. Enter your GitHub token for Copilot SDK authentication
-5. Configure optional settings:
-   - **Model**: Select from GPT-4o (default), GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, or Claude 3.7 Sonnet
+4. Fill in the configuration:
+   - **GitHub Token** – Your GitHub personal access token with Copilot permissions
+   - **Model** – Select from GPT-4o (default), GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, or Claude 3.7 Sonnet
+   - **Copilot CLI URL (add-on)** *(optional)* – URL of the GitHub Copilot Bridge add-on (e.g. `http://a1b2c3d4_github_copilot_bridge:8000`). Leave empty to use a locally installed Copilot CLI.
+
+> **Tip for Home Assistant OS users**: Install the GitHub Copilot Bridge add-on (see above) and enter its URL in the "Copilot CLI URL" field. This is the easiest way to get the integration working without manually installing the CLI in the Core container.
 
 ### Getting a GitHub Token
 
 To use this integration, you need a GitHub personal access token that can authenticate the Copilot SDK:
 1. Ensure you have an active GitHub Copilot subscription
-2. Install the GitHub Copilot CLI and sign in, or provide a PAT token for the SDK.
-3. Generate a PAT token from your GitHub developer settings.
-4. Make sure to add the necessary permissions to the token. (e.g., Copilot requests)
-5. Keep the token secure
+2. Generate a PAT token from your [GitHub developer settings](https://github.com/settings/tokens)
+3. Add the necessary permissions (e.g., Copilot requests)
+4. Keep the token secure — never share it publicly
+
+> If you are using the GitHub Copilot Bridge add-on, the same token is needed both in the add-on configuration and in the integration setup.
 
 ## Usage
 
@@ -86,7 +117,15 @@ For detailed documentation, see [agents.md](agents.md)
 
 ### "Unable to connect to Copilot CLI" Error
 
-This error indicates the GitHub Copilot CLI is not properly installed or configured:
+This error means the GitHub Copilot CLI is not reachable. There are two ways to fix it:
+
+**Option A – Use the GitHub Copilot Bridge add-on (recommended for Home Assistant OS)**
+
+1. Install the add-on as described in the [GitHub Copilot Bridge Add-on](#github-copilot-bridge-add-on-recommended-for-home-assistant-os) section
+2. Make sure the add-on is running and the Log tab shows no errors
+3. Enter the add-on URL (e.g. `http://a1b2c3d4_github_copilot_bridge:8000`) in the **Copilot CLI URL** field during integration setup
+
+**Option B – Install the CLI locally inside the Core container**
 
 1. **Install the Copilot CLI**: Visit https://docs.github.com/copilot/cli for installation instructions
 2. **Ensure CLI is in PATH**: Run `which copilot` or `copilot --version` to verify installation (or set `COPILOT_CLI_PATH` to the binary)
@@ -94,6 +133,8 @@ This error indicates the GitHub Copilot CLI is not properly installed or configu
 4. **Check Copilot subscription**: Ensure you have an active GitHub Copilot subscription
 
 #### Home Assistant OS specifics
+
+> **Easiest approach**: Install the **GitHub Copilot Bridge** add-on from this repository (see [above](#github-copilot-bridge-add-on-recommended-for-home-assistant-os)). The steps below are only needed if you prefer to install the CLI manually.
 
 The Copilot CLI must be available **inside the Home Assistant Core container**, not only the SSH/Terminal add-on. Typical steps:
 
