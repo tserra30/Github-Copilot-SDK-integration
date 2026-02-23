@@ -291,7 +291,7 @@ When adding new features:
 
 ## Instructions for Coding Agents
 
-Always check documentation sorounding this repo.
+Always check documentation surrounding this repo.
 Make sure to check all files before working and after.
 
 When working with this codebase:
