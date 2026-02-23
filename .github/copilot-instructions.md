@@ -291,10 +291,8 @@ When adding new features:
 
 ## Instructions for Coding Agents
 
-**Trust these instructions** - they have been validated and tested. Only search for additional information if:
-- These instructions are incomplete for your specific task
-- You encounter an error not documented here
-- You need to verify current dependency versions
+Always check documentation sorounding this repo.
+Make sure to check all files before working and after.
 
 When working with this codebase:
 1. Always run `python3 -m pip install -r requirements.txt` first if starting fresh
