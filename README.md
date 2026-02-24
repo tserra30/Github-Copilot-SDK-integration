@@ -116,7 +116,7 @@ automation:
 
 ## Documentation
 
-For detailed setup and usage guidance, use this README and [CONTRIBUTING.md](CONTRIBUTING.md).
+For detailed setup and usage guidance, use this README. For contributing and development details, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Troubleshooting
 
