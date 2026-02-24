@@ -33,7 +33,7 @@ This repository contains a Home Assistant custom integration that brings GitHub 
 ### Documentation
 - Add docstrings to all public functions and classes
 - Update README.md for user-facing changes
-- Update agents.md for detailed technical documentation
+- Keep README.md and CONTRIBUTING.md aligned for technical documentation
 - Keep code comments minimal but meaningful
 
 ## Project Structure
@@ -221,7 +221,7 @@ When adding new features:
 1. Check if it aligns with Home Assistant's conversation agent framework
 2. Ensure backward compatibility with existing configurations
 3. Add appropriate error handling
-4. Update documentation (README.md, agents.md)
+4. Update documentation (README.md, CONTRIBUTING.md)
 5. Consider API rate limits and token usage
 
 ## Security Considerations
@@ -269,7 +269,6 @@ When adding new features:
 - `hacs.json` - HACS integration metadata
 - `.devcontainer.json` - Dev container configuration
 - `README.md` - User documentation
-- `agents.md` - Detailed technical documentation
 - `CONTRIBUTING.md` - Contribution guidelines
 - `SECURITY.md` - Security policy
 

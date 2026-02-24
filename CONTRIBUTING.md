@@ -120,7 +120,7 @@ For feature requests, please:
 When contributing:
 
 - Update `README.md` for user-facing changes
-- Update `agents.md` for detailed documentation
+- Update `README.md` and this guide for documentation changes
 - Update translations in `translations/en.json`
 - Add code comments for complex logic
 
