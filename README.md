@@ -116,7 +116,7 @@ automation:
 
 ## Documentation
 
-For detailed documentation, see [agents.md](agents.md)
+For detailed setup and usage guidance, use this README. For contributing and development details, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Troubleshooting
 
@@ -213,7 +213,7 @@ The Copilot CLI must be available **inside the Home Assistant Core container**, 
 - Check your network latency
 - Reduce concurrent requests
 
-For more help, see the [agents.md](agents.md) documentation or [open an issue][issues].
+For more help, [open an issue][issues].
 
 ## Contributing
 
