@@ -1,7 +1,7 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM $BUILD_FROM
 
-# Install Node.js and npm (bash is already included in the hassio base image)
+# Install Node.js and npm (bash is already included in the Home Assistant base image)
 RUN apk add --no-cache nodejs npm
 
 # Install the GitHub Copilot CLI.
