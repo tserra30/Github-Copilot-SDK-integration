@@ -1,6 +1,6 @@
 build_from:
-  aarch64: ghcr.io/hassio-addons/base/aarch64:latest
-  amd64: ghcr.io/hassio-addons/base/amd64:latest
-  armhf: ghcr.io/hassio-addons/base/armhf:latest
-  armv7: ghcr.io/hassio-addons/base/armv7:latest
-  i386: ghcr.io/hassio-addons/base/i386:latest
+  aarch64: ghcr.io/home-assistant/aarch64-base:latest
+  amd64: ghcr.io/home-assistant/amd64-base:latest
+  armhf: ghcr.io/home-assistant/armhf-base:latest
+  armv7: ghcr.io/home-assistant/armv7-base:latest
+  i386: ghcr.io/home-assistant/i386-base:latest
