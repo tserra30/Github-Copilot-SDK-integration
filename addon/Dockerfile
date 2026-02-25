@@ -1,21 +1,27 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM $BUILD_FROM
 
-# Install curl and ca-certificates for downloading the Copilot CLI binary.
-RUN apk add --no-cache curl ca-certificates
+# Install curl, ca-certificates, and tar for downloading the Copilot CLI.
+RUN apk add --no-cache curl ca-certificates tar
 
-# Install the GitHub Copilot CLI by downloading the binary from GitHub releases.
-# The binary name is determined by the host architecture.
+# Install the GitHub Copilot CLI from a pinned release, verifying the SHA-256 checksum.
+# Only linux/amd64 and linux/arm64 binaries are published; other architectures are unsupported.
+ARG COPILOT_VERSION=v0.0.418
 RUN case "$(uname -m)" in \
-      x86_64)  ARCH="amd64" ;; \
+      x86_64)  ARCH="x64"   ;; \
       aarch64) ARCH="arm64" ;; \
-      armv7l)  ARCH="arm"   ;; \
-      armv6l)  ARCH="arm"   ;; \
       *) echo "Unsupported architecture: $(uname -m)" && exit 1 ;; \
     esac && \
-    curl -fsSL "https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-${ARCH}" \
-      -o /usr/local/bin/copilot && \
-    chmod +x /usr/local/bin/copilot
+    ASSET="copilot-linux-${ARCH}.tar.gz" && \
+    BASE_URL="https://github.com/github/copilot-cli/releases/download/${COPILOT_VERSION}" && \
+    curl -fsSL "${BASE_URL}/SHA256SUMS.txt" -o /tmp/SHA256SUMS.txt && \
+    curl -fsSL "${BASE_URL}/${ASSET}" -o "/tmp/${ASSET}" && \
+    cd /tmp && grep " ${ASSET}$" /tmp/SHA256SUMS.txt | sha256sum -c - && \
+    mkdir -p /tmp/copilot_extract && \
+    tar -xzf "/tmp/${ASSET}" -C /tmp/copilot_extract/ && \
+    find /tmp/copilot_extract -name "copilot" -type f | head -1 | xargs -I{} mv {} /usr/local/bin/copilot && \
+    chmod +x /usr/local/bin/copilot && \
+    rm -rf "/tmp/${ASSET}" /tmp/SHA256SUMS.txt /tmp/copilot_extract
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
