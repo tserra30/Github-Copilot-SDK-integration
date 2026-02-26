@@ -1,10 +1,13 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bookworm
 FROM $BUILD_FROM
 
-# Install curl, ca-certificates, tar, and glibc compatibility libraries.
-# gcompat and libstdc++ are required because the Copilot CLI binary is
-# compiled against glibc, while Alpine uses musl libc.
-RUN apk add --no-cache curl ca-certificates tar gcompat libstdc++
+# Install curl, ca-certificates, and tar.
+# Debian natively supports glibc, so the Copilot CLI binary runs without
+# compatibility shims.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates tar \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install the GitHub Copilot CLI from a pinned release, verifying the SHA-256 checksum.
 # Only linux/amd64 and linux/arm64 binaries are published; other architectures are unsupported.
