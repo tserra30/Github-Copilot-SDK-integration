@@ -1,5 +1,5 @@
 name: GitHub Copilot Bridge
-version: "1.0.0"
+version: "1.0.1"
 slug: github_copilot_bridge
 description: >
   Runs the GitHub Copilot CLI in headless server mode so the GitHub Copilot
@@ -10,9 +10,6 @@ url: https://github.com/tserra30/Github-Copilot-SDK-integration
 arch:
   - aarch64
   - amd64
-  - armhf
-  - armv7
-  - i386
 ports:
   8000/tcp: null
 ports_description:
