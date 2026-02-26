@@ -1,8 +1,10 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM $BUILD_FROM
 
-# Install curl, ca-certificates, and tar for downloading the Copilot CLI.
-RUN apk add --no-cache curl ca-certificates tar
+# Install curl, ca-certificates, tar, and glibc compatibility libraries.
+# gcompat and libstdc++ are required because the Copilot CLI binary is
+# compiled against glibc, while Alpine uses musl libc.
+RUN apk add --no-cache curl ca-certificates tar gcompat libstdc++
 
 # Install the GitHub Copilot CLI from a pinned release, verifying the SHA-256 checksum.
 # Only linux/amd64 and linux/arm64 binaries are published; other architectures are unsupported.
