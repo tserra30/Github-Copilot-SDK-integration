@@ -13,12 +13,18 @@ fi
 export GH_TOKEN="${GITHUB_TOKEN}"
 
 # Verify that the CLI is authenticated before attempting to start the server.
+# NOTE: 'copilot auth status' checks for a persisted login session.  When only
+# GH_TOKEN is set (no interactive login has been performed), the check may
+# return non-zero even though the server will authenticate fine via the token.
+# We therefore treat a failing status as a warning rather than a fatal error so
+# that the add-on can still start; the server log will surface any real auth
+# problems.
 bashio::log.info "Verifying GitHub Copilot CLI authentication..."
-if ! copilot auth status >/dev/null 2>&1; then
-    bashio::log.fatal "GitHub Copilot CLI is not authenticated. Please ensure the provided GitHub token has Copilot permissions and try again."
-    exit 1
+if copilot auth status; then
+    bashio::log.info "Authentication verified."
+else
+    bashio::log.warning "Copilot CLI auth status check failed. This is expected when using a raw GH_TOKEN without a persisted session. Proceeding to start the server -- check the server logs if authentication fails at runtime."
 fi
-bashio::log.info "Authentication verified."
 
 # Start the Copilot CLI in headless server mode with a retry loop.
 MAX_RETRIES=5
