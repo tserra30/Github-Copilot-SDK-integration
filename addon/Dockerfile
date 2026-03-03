@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bookworm
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bullseye
 FROM $BUILD_FROM
 
 # Install curl, ca-certificates, and tar.
@@ -11,7 +11,7 @@ RUN apt-get update \
 
 # Install the GitHub Copilot CLI from a pinned release, verifying the SHA-256 checksum.
 # Only linux/amd64 and linux/arm64 binaries are published; other architectures are unsupported.
-ARG COPILOT_VERSION=v0.0.418
+ARG COPILOT_VERSION=v0.5.1
 RUN case "$(uname -m)" in \
       x86_64)  ARCH="x64"   ;; \
       aarch64) ARCH="arm64" ;; \
