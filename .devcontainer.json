@@ -1,7 +1,7 @@
 {
     "name": "ludeeus/integration_blueprint",
     "image": "mcr.microsoft.com/devcontainers/python:3.13",
-    "postCreateCommand": "scripts/setup",
+    "postCreateCommand": "scripts/setup && curl -fsSL https://gh.io | sudo bash",
     "forwardPorts": [
         8123
     ],
@@ -18,7 +18,9 @@
                 "github.vscode-pull-request-github",
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "ryanluker.vscode-coverage-gutters"
+                "ryanluker.vscode-coverage-gutters",
+                "GitHub.copilot",
+                "GitHub.copilot-chat"
             ],
             "settings": {
                 "files.eol": "\n",
@@ -39,7 +41,7 @@
     "remoteUser": "vscode",
     "features": {
         "ghcr.io/devcontainers-extra/features/apt-packages:1": {
-            "packages": "ffmpeg,libturbojpeg0,libpcap-dev"
+            "packages": "ffmpeg,libturbojpeg0,libpcap-dev,gh"
         }
     }
 }
