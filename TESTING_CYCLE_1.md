@@ -22,9 +22,9 @@
 5. **Code Quality**: ✅ Ruff linting clean
 
 ### Bugs Discovered
-#### Bug #1: CRITICAL - NameError in async_test_connection
-- **Impact**: Config flow credential testing would crash
-- **Root Cause**: Missing None check on exception path
+#### Bug #1: MINOR - Potential NameError in async_test_connection on session failure
+- **Impact**: If session creation partially succeeds and then fails, cleanup might be skipped
+- **Root Cause**: Session variable was assigned before the `try/finally` block, leaving no safe cleanup path if creation fails mid-way
 - **Status**: ✅ FIXED
 
 #### Bug #2: MINOR - Session resource leak
