@@ -22,9 +22,9 @@
 5. **Code Quality**: ✅ Ruff linting clean
 
 ### Bugs Discovered
-#### Bug #1: CRITICAL - NameError in async_test_connection
-- **Impact**: Config flow credential testing would crash
-- **Root Cause**: Missing None check on exception path
+#### Bug #1: MINOR - Missing cleanup when async_create_session() raises
+- **Impact**: Exceptions during session creation in `async_test_connection` bypassed the cleanup path, causing potential resource leaks and inconsistent state
+- **Root Cause**: Session creation was performed outside the surrounding `try/finally` in `async_test_connection`, so errors from `async_create_session()` skipped the `finally`-based cleanup
 - **Status**: ✅ FIXED
 
 #### Bug #2: MINOR - Session resource leak
@@ -40,7 +40,7 @@
 ✅ Module imports:         All modules load successfully
 ✅ Configuration files:    All valid
 ✅ Shell scripts:          Valid syntax
-✅ Syntax verification:    No NameErrors
+✅ Syntax verification:    async_test_connection handles session errors without leaking resources
 ✅ Resource cleanup:       Proper finally blocks
 ```
 

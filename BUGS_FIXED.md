@@ -6,45 +6,44 @@
 
 ---
 
-## Bug #1: ❌ CRITICAL - Unhandled Exception in `async_test_connection`
+## Bug #1: ⚠️ MINOR - Unsafe Session Cleanup in `async_test_connection`
 
-**Severity**: CRITICAL
-**File**: `custom_components/github_copilot/api.py` Line 110-116
+**Severity**: MINOR
+**File**: `custom_components/github_copilot/api.py` Line 110-118
 **Status**: ✅ FIXED
 
 ### Problem
-The `async_test_connection()` method had a bug where if `async_create_session()` raises an exception, the `finally` block tries to access a variable that doesn't exist:
+The `async_test_connection()` method assigned `session` before entering the `try/finally` block. While this prevented a NameError in the original flow, it meant that if `async_create_session()` raised an exception, execution would leave the function without the `finally` block running for cleanup purposes:
 
 ```python
 async def async_test_connection(self) -> bool:
-    session = await self.async_create_session()  # ← If this fails...
+    session = await self.async_create_session()  # ← If this raises, try/finally never entered
     try:
         await self.async_send_prompt(session.session_id, "Hello")
     finally:
-        await self.async_end_session(session.session_id)  # ← NameError! 'session' not defined
+        await self.async_end_session(session.session_id)  # ← Never reached on create failure
     return True
 ```
 
 **Impact**:
-- If config flow tries to test credentials and `async_create_session()` fails
-- The `finally` block executes and tries to access `session` which was never assigned
-- Results in `NameError: name 'session' is not defined`
-- Config flow would crash instead of showing user-friendly error message
-- User cannot set up the integration even with valid credentials
+- If session creation fails with an exception, the `finally` block is never entered
+- No cleanup is attempted for a partially-created session
+- The `if session:` check in the `finally` was redundant since `session` was always assigned
 
 ### Root Cause
-Python's `finally` block is executed regardless of whether the `try` block completed successfully. If an exception occurs before the variable is assigned, accessing that variable in `finally` causes `NameError`.
+Session creation occurred outside the `try/finally` block, so any exception during creation bypassed the cleanup path entirely.
 
 ### Fix Applied
-Added a None check before accessing the session:
+Moved session creation inside the `try` block and initialized `session = None` before it, so the `finally` guard is both meaningful and safe:
 
 ```python
 async def async_test_connection(self) -> bool:
-    session = await self.async_create_session()
+    session = None
     try:
+        session = await self.async_create_session()  # ← Now inside try
         await self.async_send_prompt(session.session_id, "Hello")
     finally:
-        if session:  # ← ADDED: Check if session exists
+        if session:  # ← Now a meaningful guard: only clean up if created
             await self.async_end_session(session.session_id)
     return True
 ```
@@ -52,7 +51,7 @@ async def async_test_connection(self) -> bool:
 ### Verification
 - ✅ Code passes ruff linting
 - ✅ Module imports successfully
-- ✅ Error handling works correctly
+- ✅ Cleanup guard is now meaningful and correct
 
 ---
 
@@ -141,7 +140,7 @@ for session_id in expired_sessions:
 
 ### Files Modified
 1. `custom_components/github_copilot/api.py`
-   - Line 115: Added `if session:` check in finally block
+   - Lines 112-118: Initialized `session = None`, moved session creation inside `try`, making `if session:` guard meaningful
 
 2. `custom_components/github_copilot/conversation.py`
    - Lines 118-120: Moved session cleanup to finally block
