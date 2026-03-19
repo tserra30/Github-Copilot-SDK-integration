@@ -108,8 +108,6 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         for session_id in expired_sessions:
             try:
                 await client.async_end_session(session_id)
-                self.sessions.pop(session_id, None)
-                self._session_last_used.pop(session_id, None)
                 LOGGER.debug("Expired session %s cleaned up", session_id)
             except Exception as err:  # noqa: BLE001
                 LOGGER.error(
@@ -117,6 +115,10 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                     session_id,
                     type(err).__name__,
                 )
+            finally:
+                # Always remove from tracking, even if cleanup fails
+                self.sessions.pop(session_id, None)
+                self._session_last_used.pop(session_id, None)
 
     @property
     def supported_languages(self) -> list[str] | Literal["*"]:

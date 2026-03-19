@@ -109,11 +109,13 @@ class GitHubCopilotApiClient:
             True if connection is successful.
 
         """
-        session = await self.async_create_session()
+        session = None
         try:
+            session = await self.async_create_session()
             await self.async_send_prompt(session.session_id, "Hello")
         finally:
-            await self.async_end_session(session.session_id)
+            if session:
+                await self.async_end_session(session.session_id)
         return True
 
     async def async_create_session(self) -> CopilotSessionContext:
