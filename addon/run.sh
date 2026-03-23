@@ -20,7 +20,7 @@ export GH_TOKEN="${GITHUB_TOKEN}"
 # that the add-on can still start; the server log will surface any real auth
 # problems.
 bashio::log.info "Verifying GitHub Copilot CLI authentication..."
-if copilot -p "auth status"; then
+if copilot auth status; then
     bashio::log.info "Authentication verified."
 else
     bashio::log.warning "Copilot CLI auth status check failed. This is expected when using a raw GH_TOKEN without a persisted session. Proceeding to start the server -- check the server logs if authentication fails at runtime."
