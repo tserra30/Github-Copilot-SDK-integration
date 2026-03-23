@@ -21,6 +21,7 @@ from .const import (
     DEFAULT_CLI_URL,
     DEFAULT_MODEL,
     DOMAIN,
+    LEGACY_MODEL_MAP,
     LOGGER,
 )
 from .coordinator import GitHubCopilotDataUpdateCoordinator
@@ -53,9 +54,26 @@ async def async_setup_entry(
         client_options: dict[str, str] = {"github_token": entry.data[CONF_API_TOKEN]}
         if cli_url:
             client_options["cli_url"] = cli_url
+
+        # Normalize legacy model IDs (e.g. "claude-3.5-sonnet" → "claude-3-5-sonnet")
+        # stored in config entries created before the model names were corrected.
+        model = entry.data.get(CONF_MODEL, DEFAULT_MODEL)
+        if model in LEGACY_MODEL_MAP:
+            new_model = LEGACY_MODEL_MAP[model]
+            LOGGER.info(
+                "Migrating stored model '%s' to '%s'",
+                model,
+                new_model,
+            )
+            hass.config_entries.async_update_entry(
+                entry,
+                data={**entry.data, CONF_MODEL: new_model},
+            )
+            model = new_model
+
         entry.runtime_data = GitHubCopilotData(
             client=GitHubCopilotApiClient(
-                model=entry.data.get(CONF_MODEL, DEFAULT_MODEL),
+                model=model,
                 client_options=client_options,
             ),
             integration=async_get_loaded_integration(hass, entry.domain),

@@ -22,6 +22,7 @@ from .const import (
     DEFAULT_CLI_URL,
     DEFAULT_MODEL,
     DOMAIN,
+    LEGACY_MODEL_MAP,
     LOGGER,
     SUPPORTED_MODELS,
 )
@@ -216,8 +217,9 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
             )
             return self.async_create_entry(title="", data={})
 
-        # Get current model from config entry
+        # Get current model from config entry, normalizing any legacy IDs.
         current_model = self.config_entry.data.get(CONF_MODEL, DEFAULT_MODEL)
+        current_model = LEGACY_MODEL_MAP.get(current_model, current_model)
 
         return self.async_show_form(
             step_id="init",
