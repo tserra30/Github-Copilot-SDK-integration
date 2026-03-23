@@ -26,10 +26,5 @@ SUPPORTED_MODELS = [
     "o3-mini",
     "o1",
     "o1-mini",
-    "claude-3.5-sonnet",
-    "claude-3.7-sonnet",
+    "claude-3-5-sonnet",
 ]
-
-
-# API constants
-API_TIMEOUT = 30  # Timeout in seconds for API requests

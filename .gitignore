@@ -16,3 +16,10 @@ coverage.xml
 # Home Assistant configuration
 config/*
 !config/configuration.yaml
+
+# Analysis and report files (stored in codespace, not tracked)
+ANALYSIS_REPORT.md
+BUG_REPORT.md
+BUGS_FIXED.md
+CYCLE_1_FINAL_REPORT.md
+TESTING_CYCLE_1.md

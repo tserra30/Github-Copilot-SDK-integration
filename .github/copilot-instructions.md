@@ -210,7 +210,7 @@ async def async_step_user(self, user_input=None):
 ## Important Notes
 
 - This integration uses the GitHub Copilot SDK, not a raw API mimic
-- Supports multiple models: GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, Claude 3.7 Sonnet
+- Supports multiple models: GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet
 - Conversation history is stored in memory (not persisted)
 - API rate limits must be respected
 - All user data sent to GitHub Copilot follows GitHub's privacy policy
@@ -235,9 +235,9 @@ When adding new features:
 ## Common Issues and Workarounds
 
 ### Copilot CLI Not Found
-- **Issue**: Integration fails with "Unable to connect to Copilot CLI" 
+- **Issue**: Integration fails with "Unable to connect to Copilot CLI"
 - **Cause**: GitHub Copilot CLI not installed or not in PATH
-- **Solution**: 
+- **Solution**:
   1. Install CLI from https://docs.github.com/copilot/cli
   2. Ensure it's executable and in PATH: `which copilot` or `copilot --version`
   3. Authenticate: `copilot auth login`
