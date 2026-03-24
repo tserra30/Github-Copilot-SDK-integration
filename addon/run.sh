@@ -29,17 +29,20 @@ fi
 # --bind 0.0.0.0  : ensures the server is reachable from other Supervisor-network containers.
 # --no-auto-update: suppresses self-update checks that can cause unexpected behaviour.
 # --log-level     : controls server verbosity.
+# Use an array for the full argument list to avoid word-splitting issues.
+# `|| true` prevents the script from aborting if `copilot --help` exits non-zero.
 COPILOT_HELP=$(copilot --help 2>&1 || true)
-BIND_FLAGS=""
-EXTRA_FLAGS=""
-if echo "${COPILOT_HELP}" | grep -q -- "--bind"; then
-    BIND_FLAGS="--bind 0.0.0.0"
+# Returns 0 if the given long flag name appears in the help text as a declared option.
+has_flag() { echo "${COPILOT_HELP}" | grep -qE "(^|[[:space:]])--${1}([[:space:]=]|$)"; }
+COPILOT_ARGS=(--headless --port 8000)
+if has_flag bind; then
+    COPILOT_ARGS+=(--bind 0.0.0.0)
 fi
-if echo "${COPILOT_HELP}" | grep -q -- "--no-auto-update"; then
-    EXTRA_FLAGS="${EXTRA_FLAGS} --no-auto-update"
+if has_flag no-auto-update; then
+    COPILOT_ARGS+=(--no-auto-update)
 fi
-if echo "${COPILOT_HELP}" | grep -q -- "--log-level"; then
-    EXTRA_FLAGS="${EXTRA_FLAGS} --log-level info"
+if has_flag log-level; then
+    COPILOT_ARGS+=(--log-level info)
 fi
 
 # Start the Copilot CLI in headless server mode with a retry loop.
@@ -49,8 +52,7 @@ ATTEMPT=1
 
 while true; do
     bashio::log.info "Starting GitHub Copilot CLI server on port 8000 (attempt ${ATTEMPT})..."
-    # shellcheck disable=SC2086
-    copilot --headless ${BIND_FLAGS} ${EXTRA_FLAGS} --port 8000
+    copilot "${COPILOT_ARGS[@]}"
     EXIT_CODE=$?
 
     if [ "${EXIT_CODE}" -eq 0 ]; then
