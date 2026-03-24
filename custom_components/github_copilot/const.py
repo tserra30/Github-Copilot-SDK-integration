@@ -26,10 +26,14 @@ SUPPORTED_MODELS = [
     "o3-mini",
     "o1",
     "o1-mini",
-    "claude-3.5-sonnet",
-    "claude-3.7-sonnet",
+    "claude-3-5-sonnet",
 ]
 
-
-# API constants
-API_TIMEOUT = 30  # Timeout in seconds for API requests
+# Map of legacy model IDs (stored in old config entries) to current model IDs.
+# Used to migrate existing entries that stored model values which are no
+# longer present in SUPPORTED_MODELS without requiring a full config-entry
+# version migration.
+LEGACY_MODEL_MAP: dict[str, str] = {
+    "claude-3.5-sonnet": "claude-3-5-sonnet",
+    "claude-3.7-sonnet": "claude-3-5-sonnet",
+}
