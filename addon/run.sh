@@ -31,17 +31,26 @@ fi
 # --log-level     : controls server verbosity.
 # Use an array for the full argument list to avoid word-splitting issues.
 # `|| true` prevents the script from aborting if `copilot --help` exits non-zero.
+# --bind is only advertised in the headless/server sub-command help in some CLI
+# versions (e.g. v1.0.9), so capture both global and headless help texts.
 COPILOT_HELP=$(copilot --help 2>&1 || true)
-# Returns 0 if the given long flag name appears in the help text as a declared option.
-has_flag() { echo "${COPILOT_HELP}" | grep -qE "(^|[[:space:]])--${1}([[:space:]=]|$)"; }
+COPILOT_HEADLESS_HELP=$(copilot --headless --help 2>&1 || true)
+# Returns 0 if the given long flag name appears at the start of a line in the
+# provided help text (option-list lines begin with optional whitespace then the
+# flag), preventing false positives from flag names in descriptive prose.
+has_flag() {
+    local help_text="${1}" flag="${2}"
+    printf '%s\n' "${help_text}" | grep -qE "^[[:space:]]*--${flag}([[:space:]=]|$)"
+}
 COPILOT_ARGS=(--headless --port 8000)
-if has_flag bind; then
+# --bind may only appear under the headless sub-command help.
+if has_flag "${COPILOT_HEADLESS_HELP}" bind || has_flag "${COPILOT_HELP}" bind; then
     COPILOT_ARGS+=(--bind 0.0.0.0)
 fi
-if has_flag no-auto-update; then
+if has_flag "${COPILOT_HELP}" no-auto-update; then
     COPILOT_ARGS+=(--no-auto-update)
 fi
-if has_flag log-level; then
+if has_flag "${COPILOT_HELP}" log-level; then
     COPILOT_ARGS+=(--log-level info)
 fi
 
