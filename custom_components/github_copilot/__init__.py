@@ -88,14 +88,8 @@ async def async_setup_entry(
 
         LOGGER.info("GitHub Copilot integration setup completed successfully")
         return True  # noqa: TRY300
-    except Exception as err:
-        # Log full exception details to help diagnose setup issues
-        LOGGER.exception(
-            "Failed to set up GitHub Copilot integration: %s - %s. "
-            "Full traceback available in logs.",
-            type(err).__name__,
-            str(err),
-        )
+    except Exception:
+        LOGGER.exception("Failed to set up GitHub Copilot integration")
         raise
 
 
