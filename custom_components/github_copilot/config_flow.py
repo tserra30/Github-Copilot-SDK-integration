@@ -69,26 +69,32 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                 except GitHubCopilotApiClientAuthenticationError as exception:
                     LOGGER.warning(
-                        "GitHub Copilot authentication failed: %s",
-                        exception,
+                        "GitHub Copilot authentication failed: %s - %s",
+                        type(exception).__name__,
+                        str(exception),
+                        exc_info=True,
                     )
                     _errors["base"] = "auth"
                 except GitHubCopilotApiClientCommunicationError as exception:
                     LOGGER.error(
-                        "Failed to connect to GitHub Copilot CLI: %s",
-                        exception,
+                        "Failed to connect to GitHub Copilot CLI: %s - %s",
+                        type(exception).__name__,
+                        str(exception),
+                        exc_info=True,
                     )
                     _errors["base"] = "connection"
                 except GitHubCopilotApiClientError as exception:
                     LOGGER.exception(
-                        "Unexpected error during GitHub Copilot setup: %s",
-                        exception,
+                        "Unexpected error during GitHub Copilot setup: %s - %s",
+                        type(exception).__name__,
+                        str(exception),
                     )
                     _errors["base"] = "unknown"
                 except Exception as exception:  # noqa: BLE001
                     LOGGER.exception(
-                        "Unexpected error in config flow: %s",
+                        "Unexpected error in config flow: %s - %s",
                         type(exception).__name__,
+                        str(exception),
                     )
                     _errors["base"] = "unknown"
                 else:
@@ -139,8 +145,10 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             )
         except Exception as exception:  # noqa: BLE001
             LOGGER.exception(
-                "Failed to render config flow form: %s",
+                "Failed to render config flow form: %s - %s. "
+                "This may indicate a dependency or import issue.",
                 type(exception).__name__,
+                str(exception),
             )
             # Return error form with minimal schema to avoid further errors
             return self.async_show_form(
@@ -181,12 +189,14 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception as exception:
             # Wrap any unexpected exception
             LOGGER.exception(
-                "Unexpected exception during credential test: %s",
+                "Unexpected exception during credential test: %s - %s. "
+                "Full details in traceback.",
                 type(exception).__name__,
+                str(exception),
             )
             msg = (
                 f"Unexpected error during credential validation: "
-                f"{type(exception).__name__}"
+                f"{type(exception).__name__}: {exception}"
             )
             raise GitHubCopilotApiClientError(msg) from exception
         finally:

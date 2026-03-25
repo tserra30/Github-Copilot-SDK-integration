@@ -131,9 +131,11 @@ class GitHubCopilotApiClient:
                 )
             except TimeoutError as exception:
                 LOGGER.error(
-                    "Timeout creating Copilot session with model '%s': %s",
+                    "Timeout creating Copilot session with model '%s': %s - %s",
                     self._model,
-                    exception,
+                    type(exception).__name__,
+                    str(exception),
+                    exc_info=True,
                 )
                 msg = (
                     f"Timeout creating session with model '{self._model}'. "
@@ -142,8 +144,10 @@ class GitHubCopilotApiClient:
                 raise GitHubCopilotApiClientCommunicationError(msg) from exception
             except ValueError as exception:
                 LOGGER.error(
-                    "Invalid configuration for Copilot session: %s",
-                    exception,
+                    "Invalid configuration for Copilot session: %s - %s",
+                    type(exception).__name__,
+                    str(exception),
+                    exc_info=True,
                 )
                 msg = (
                     f"Invalid session configuration for model '{self._model}': "
@@ -152,14 +156,16 @@ class GitHubCopilotApiClient:
                 raise GitHubCopilotApiClientError(msg) from exception
             except Exception as exception:
                 LOGGER.error(
-                    "Failed to create Copilot session with model '%s': %s - %s",
+                    "Failed to create Copilot session with model '%s': %s - %s. "
+                    "Full traceback available.",
                     self._model,
                     type(exception).__name__,
                     str(exception),
+                    exc_info=True,
                 )
                 msg = (
                     f"Unable to start Copilot session with model '{self._model}': "
-                    f"{type(exception).__name__}. Check the logs for details."
+                    f"{type(exception).__name__}: {exception}"
                 )
                 raise GitHubCopilotApiClientError(msg) from exception
             session_context = CopilotSessionContext(
@@ -184,8 +190,10 @@ class GitHubCopilotApiClient:
             await session.copilot_session.destroy()
         except Exception as exception:
             LOGGER.error(
-                "Failed to destroy Copilot session: %s",
+                "Failed to destroy Copilot session: %s - %s",
                 type(exception).__name__,
+                str(exception),
+                exc_info=True,
             )
             msg = "Unable to clean up Copilot session."
             raise GitHubCopilotApiClientError(msg) from exception
@@ -208,9 +216,11 @@ class GitHubCopilotApiClient:
             event = await session.copilot_session.send_and_wait({"prompt": prompt})
         except TimeoutError as exception:
             LOGGER.error(
-                "Copilot session %s timed out waiting for response: %s",
+                "Copilot session %s timed out waiting for response: %s - %s",
                 session_id,
-                exception,
+                type(exception).__name__,
+                str(exception),
+                exc_info=True,
             )
             msg = (
                 "Request timed out waiting for Copilot response. "
@@ -219,23 +229,23 @@ class GitHubCopilotApiClient:
             raise GitHubCopilotApiClientCommunicationError(msg) from exception
         except ConnectionError as exception:
             LOGGER.error(
-                "Connection error in Copilot session %s: %s",
+                "Connection error in Copilot session %s: %s - %s",
                 session_id,
-                exception,
+                type(exception).__name__,
+                str(exception),
+                exc_info=True,
             )
             msg = "Lost connection to Copilot. Please check your network and try again."
             raise GitHubCopilotApiClientCommunicationError(msg) from exception
         except Exception as exception:
             LOGGER.error(
-                "Copilot session %s error: %s - %s",
+                "Copilot session %s error: %s - %s. Full details in traceback.",
                 session_id,
                 type(exception).__name__,
                 str(exception),
+                exc_info=True,
             )
-            msg = (
-                f"Copilot failed to respond: {type(exception).__name__}. "
-                "Please check the logs for details."
-            )
+            msg = f"Copilot failed to respond: {type(exception).__name__}: {exception}"
             raise GitHubCopilotApiClientError(msg) from exception
 
         if event is None:
@@ -466,8 +476,14 @@ class GitHubCopilotApiClient:
                 client = copilot.CopilotClient(self._client_options)
             except (TypeError, ValueError) as exception:
                 LOGGER.error(
-                    "Invalid client configuration: %s",
+                    "Invalid client configuration: %s - %s. Options: %s",
                     type(exception).__name__,
+                    str(exception),
+                    {
+                        k: "***" if "token" in k.lower() else v
+                        for k, v in self._client_options.items()
+                    },
+                    exc_info=True,
                 )
                 msg = (
                     "Invalid Copilot client configuration. Please check your settings."
@@ -475,17 +491,24 @@ class GitHubCopilotApiClient:
                 raise GitHubCopilotApiClientError(msg) from exception
             except Exception as exception:
                 LOGGER.error(
-                    "Failed to initialize Copilot client: %s",
+                    "Failed to initialize Copilot client: %s - %s",
                     type(exception).__name__,
+                    str(exception),
+                    exc_info=True,
                 )
-                msg = f"Unable to initialize Copilot client: {type(exception).__name__}"
+                msg = (
+                    f"Unable to initialize Copilot client: "
+                    f"{type(exception).__name__}: {exception}"
+                )
                 raise GitHubCopilotApiClientError(msg) from exception
             try:
                 await client.start()
             except FileNotFoundError as exception:
                 LOGGER.error(
-                    "Copilot CLI executable not found%s",
+                    "Copilot CLI executable not found%s. Exception details: %s",
                     self._format_errno_info(exception),
+                    str(exception),
+                    exc_info=True,
                 )
                 msg = (
                     "GitHub Copilot CLI executable not found. "
@@ -494,8 +517,11 @@ class GitHubCopilotApiClient:
                 raise GitHubCopilotApiClientCommunicationError(msg) from None
             except PermissionError as exception:
                 LOGGER.error(
-                    "Permission denied when starting Copilot CLI%s",
+                    "Permission denied when starting Copilot CLI%s. "
+                    "Exception details: %s",
                     self._format_errno_info(exception),
+                    str(exception),
+                    exc_info=True,
                 )
                 msg = (
                     "Permission denied when starting GitHub Copilot CLI. "
@@ -504,8 +530,10 @@ class GitHubCopilotApiClient:
                 raise GitHubCopilotApiClientCommunicationError(msg) from None
             except ConnectionRefusedError as exception:
                 LOGGER.error(
-                    "Connection refused by Copilot CLI: %s",
-                    exception,
+                    "Connection refused by Copilot CLI: %s - %s",
+                    type(exception).__name__,
+                    str(exception),
+                    exc_info=True,
                 )
                 msg = (
                     "Connection refused by GitHub Copilot CLI. "
@@ -514,14 +542,15 @@ class GitHubCopilotApiClient:
                 raise GitHubCopilotApiClientCommunicationError(msg) from exception
             except Exception as exception:
                 LOGGER.error(
-                    "Failed to start Copilot SDK client: %s - %s",
+                    "Failed to start Copilot SDK client: %s - %s. "
+                    "Full traceback available in logs.",
                     type(exception).__name__,
                     str(exception),
+                    exc_info=True,
                 )
                 exc_name = type(exception).__name__
                 msg = (
-                    f"Unable to connect to GitHub Copilot CLI: {exc_name}. "
-                    "Please check the logs for more details."
+                    f"Unable to connect to GitHub Copilot CLI: {exc_name}: {exception}"
                 )
                 raise GitHubCopilotApiClientCommunicationError(msg) from exception
 
@@ -530,9 +559,11 @@ class GitHubCopilotApiClient:
             except Exception as exception:
                 await client.stop()
                 LOGGER.error(
-                    "Failed to get Copilot authentication status: %s - %s",
+                    "Failed to get Copilot authentication status: %s - %s. "
+                    "Full traceback in logs.",
                     type(exception).__name__,
                     str(exception),
+                    exc_info=True,
                 )
                 msg = (
                     "Failed to verify Copilot CLI authentication. "
@@ -564,8 +595,10 @@ class GitHubCopilotApiClient:
             models = await client.list_models()
         except Exception as exception:
             LOGGER.error(
-                "Failed to list Copilot models: %s",
+                "Failed to list Copilot models: %s - %s",
                 type(exception).__name__,
+                str(exception),
+                exc_info=True,
             )
             msg = "Unable to fetch Copilot models."
             raise GitHubCopilotApiClientCommunicationError(msg) from exception
