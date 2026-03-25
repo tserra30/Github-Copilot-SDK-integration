@@ -476,13 +476,9 @@ class GitHubCopilotApiClient:
                 client = copilot.CopilotClient(self._client_options)
             except (TypeError, ValueError) as exception:
                 LOGGER.error(
-                    "Invalid client configuration: %s - %s. Options: %s",
+                    "Invalid client configuration: %s - %s",
                     type(exception).__name__,
                     str(exception),
-                    {
-                        k: "***" if "token" in k.lower() else v
-                        for k, v in self._client_options.items()
-                    },
                     exc_info=True,
                 )
                 msg = (
