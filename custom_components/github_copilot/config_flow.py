@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -16,13 +17,21 @@ from .api import (
 )
 from .const import (
     CONF_API_TOKEN,
+    CONF_CLI_URL,
     CONF_MODEL,
+    DEFAULT_CLI_URL,
     DEFAULT_MODEL,
     DOMAIN,
     LEGACY_MODEL_MAP,
     LOGGER,
     SUPPORTED_MODELS,
 )
+
+
+def _validate_cli_url(cli_url: str) -> bool:
+    """Return True if cli_url is a valid http/https URL, False otherwise."""
+    parsed = urlparse(cli_url)
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
 
 
 class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -45,6 +54,11 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         _errors = {}
         if user_input is not None:
             model = user_input.get(CONF_MODEL, DEFAULT_MODEL)
+            cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
+
+            # Validate the CLI URL format if provided
+            if cli_url and not _validate_cli_url(cli_url):
+                _errors[CONF_CLI_URL] = "invalid_url"
 
             if not _errors:
                 try:
@@ -55,6 +69,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     await self._test_credentials(
                         api_token=user_input[CONF_API_TOKEN],
                         model=model,
+                        cli_url=cli_url,
                     )
                 except GitHubCopilotApiClientAuthenticationError as exception:
                     LOGGER.warning(
@@ -89,9 +104,10 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                         "GitHub Copilot integration configured with model '%s'",
                         model,
                     )
+                    # Normalize the cli_url to the stripped value before persisting
                     return self.async_create_entry(
                         title="GitHub Copilot",
-                        data=user_input,
+                        data={**user_input, CONF_CLI_URL: cli_url},
                     )
 
         try:
@@ -111,6 +127,14 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                             selector.SelectSelectorConfig(
                                 options=SUPPORTED_MODELS,
                                 mode=selector.SelectSelectorMode.DROPDOWN,
+                            ),
+                        ),
+                        vol.Optional(
+                            CONF_CLI_URL,
+                            default=DEFAULT_CLI_URL,
+                        ): selector.TextSelector(
+                            selector.TextSelectorConfig(
+                                type=selector.TextSelectorType.URL,
                             ),
                         ),
                     },
@@ -142,9 +166,15 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         api_token: str,
         model: str,
+        cli_url: str = DEFAULT_CLI_URL,
     ) -> None:
         """Validate credentials."""
         client_options: dict[str, Any] = {"github_token": api_token}
+        if cli_url.strip():
+            # The github-copilot-sdk supports a "cli_url" client option
+            # to connect to a remote Copilot CLI server (like the bridge add-on)
+            # instead of the local binary.
+            client_options["cli_url"] = cli_url.strip()
         client = GitHubCopilotApiClient(
             model=model,
             client_options=client_options,
@@ -188,20 +218,32 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
         user_input: dict[str, Any] | None = None,
     ) -> config_entries.ConfigFlowResult:
         """Handle options flow."""
+        _errors: dict[str, str] = {}
         if user_input is not None:
-            # Update the config entry with new model
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data={
-                    **self.config_entry.data,
-                    CONF_MODEL: user_input[CONF_MODEL],
-                },
-            )
-            return self.async_create_entry(title="", data={})
+            cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
+
+            # Apply the same http/https validation as the initial config flow
+            if cli_url and not _validate_cli_url(cli_url):
+                _errors[CONF_CLI_URL] = "invalid_url"
+
+            if not _errors:
+                # Update the config entry with the normalized model and CLI URL
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data={
+                        **self.config_entry.data,
+                        CONF_MODEL: user_input[CONF_MODEL],
+                        CONF_CLI_URL: cli_url,
+                    },
+                )
+                return self.async_create_entry(title="", data={})
 
         # Get current model from config entry, normalizing any legacy IDs.
         current_model = self.config_entry.data.get(CONF_MODEL, DEFAULT_MODEL)
         current_model = LEGACY_MODEL_MAP.get(current_model, current_model)
+
+        # Get current CLI URL from config entry
+        current_cli_url = self.config_entry.data.get(CONF_CLI_URL, DEFAULT_CLI_URL)
 
         return self.async_show_form(
             step_id="init",
@@ -216,6 +258,15 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         ),
                     ),
+                    vol.Optional(
+                        CONF_CLI_URL,
+                        default=current_cli_url,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.URL,
+                        ),
+                    ),
                 }
             ),
+            errors=_errors,
         )
