@@ -29,10 +29,12 @@
         "step": {
             "init": {
                 "data": {
-                    "model": "Model"
+                    "model": "Model",
+                    "cli_url": "Copilot CLI URL (add-on)"
                 },
                 "data_description": {
-                    "model": "The AI model to use for conversations"
+                    "model": "The AI model to use for conversations",
+                    "cli_url": "URL of the GitHub Copilot Bridge add-on server. Leave empty to use the locally installed Copilot CLI."
                 }
             }
         }

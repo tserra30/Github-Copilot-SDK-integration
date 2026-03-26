@@ -100,9 +100,12 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                         "GitHub Copilot integration configured with model '%s'",
                         model,
                     )
+                    # Normalize the cli_url to the stripped value before persisting
+                    normalized_input = dict(user_input)
+                    normalized_input[CONF_CLI_URL] = cli_url
                     return self.async_create_entry(
                         title="GitHub Copilot",
-                        data=user_input,
+                        data=normalized_input,
                     )
 
         try:
@@ -213,17 +216,27 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
         user_input: dict[str, Any] | None = None,
     ) -> config_entries.ConfigFlowResult:
         """Handle options flow."""
+        _errors: dict[str, str] = {}
         if user_input is not None:
-            # Update the config entry with new model and CLI URL
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data={
-                    **self.config_entry.data,
-                    CONF_MODEL: user_input[CONF_MODEL],
-                    CONF_CLI_URL: user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL),
-                },
-            )
-            return self.async_create_entry(title="", data={})
+            cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
+
+            # Apply the same http/https validation as the initial config flow
+            if cli_url:
+                parsed = urlparse(cli_url)
+                if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                    _errors[CONF_CLI_URL] = "invalid_url"
+
+            if not _errors:
+                # Update the config entry with the normalized model and CLI URL
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data={
+                        **self.config_entry.data,
+                        CONF_MODEL: user_input[CONF_MODEL],
+                        CONF_CLI_URL: cli_url,
+                    },
+                )
+                return self.async_create_entry(title="", data={})
 
         # Get current model from config entry, normalizing any legacy IDs.
         current_model = self.config_entry.data.get(CONF_MODEL, DEFAULT_MODEL)
@@ -255,4 +268,5 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
                     ),
                 }
             ),
+            errors=_errors,
         )
