@@ -28,6 +28,12 @@ from .const import (
 )
 
 
+def _validate_cli_url(cli_url: str) -> bool:
+    """Return True if cli_url is a valid http/https URL, False otherwise."""
+    parsed = urlparse(cli_url)
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
 class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for GitHub Copilot."""
 
@@ -51,10 +57,8 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
 
             # Validate the CLI URL format if provided
-            if cli_url:
-                parsed = urlparse(cli_url)
-                if parsed.scheme not in ("http", "https") or not parsed.netloc:
-                    _errors[CONF_CLI_URL] = "invalid_url"
+            if cli_url and not _validate_cli_url(cli_url):
+                _errors[CONF_CLI_URL] = "invalid_url"
 
             if not _errors:
                 try:
@@ -101,11 +105,9 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                         model,
                     )
                     # Normalize the cli_url to the stripped value before persisting
-                    normalized_input = dict(user_input)
-                    normalized_input[CONF_CLI_URL] = cli_url
                     return self.async_create_entry(
                         title="GitHub Copilot",
-                        data=normalized_input,
+                        data={**user_input, CONF_CLI_URL: cli_url},
                     )
 
         try:
@@ -221,10 +223,8 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
             cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
 
             # Apply the same http/https validation as the initial config flow
-            if cli_url:
-                parsed = urlparse(cli_url)
-                if parsed.scheme not in ("http", "https") or not parsed.netloc:
-                    _errors[CONF_CLI_URL] = "invalid_url"
+            if cli_url and not _validate_cli_url(cli_url):
+                _errors[CONF_CLI_URL] = "invalid_url"
 
             if not _errors:
                 # Update the config entry with the normalized model and CLI URL
