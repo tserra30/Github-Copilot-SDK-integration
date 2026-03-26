@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlparse
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -17,9 +16,7 @@ from .api import (
 )
 from .const import (
     CONF_API_TOKEN,
-    CONF_CLI_URL,
     CONF_MODEL,
-    DEFAULT_CLI_URL,
     DEFAULT_MODEL,
     DOMAIN,
     LEGACY_MODEL_MAP,
@@ -48,13 +45,6 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         _errors = {}
         if user_input is not None:
             model = user_input.get(CONF_MODEL, DEFAULT_MODEL)
-            cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
-
-            # Validate the CLI URL format if provided
-            if cli_url:
-                parsed = urlparse(cli_url)
-                if parsed.scheme not in ("http", "https") or not parsed.netloc:
-                    _errors[CONF_CLI_URL] = "invalid_url"
 
             if not _errors:
                 try:
@@ -65,7 +55,6 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     await self._test_credentials(
                         api_token=user_input[CONF_API_TOKEN],
                         model=model,
-                        cli_url=cli_url,
                     )
                 except GitHubCopilotApiClientAuthenticationError as exception:
                     LOGGER.warning(
@@ -81,14 +70,16 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     _errors["base"] = "connection"
                 except GitHubCopilotApiClientError as exception:
                     LOGGER.exception(
-                        "Unexpected error during GitHub Copilot setup: %s",
-                        exception,
+                        "Unexpected error during GitHub Copilot setup: %s - %s",
+                        type(exception).__name__,
+                        str(exception),
                     )
                     _errors["base"] = "unknown"
                 except Exception as exception:  # noqa: BLE001
                     LOGGER.exception(
-                        "Unexpected error in config flow: %s",
+                        "Unexpected error in config flow: %s - %s",
                         type(exception).__name__,
+                        str(exception),
                     )
                     _errors["base"] = "unknown"
                 else:
@@ -122,14 +113,6 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                                 mode=selector.SelectSelectorMode.DROPDOWN,
                             ),
                         ),
-                        vol.Optional(
-                            CONF_CLI_URL,
-                            default=DEFAULT_CLI_URL,
-                        ): selector.TextSelector(
-                            selector.TextSelectorConfig(
-                                type=selector.TextSelectorType.URL,
-                            ),
-                        ),
                     },
                 ),
                 errors=_errors,
@@ -139,8 +122,10 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             )
         except Exception as exception:  # noqa: BLE001
             LOGGER.exception(
-                "Failed to render config flow form: %s",
+                "Failed to render config flow form: %s - %s. "
+                "This may indicate a dependency or import issue.",
                 type(exception).__name__,
+                str(exception),
             )
             # Return error form with minimal schema to avoid further errors
             return self.async_show_form(
@@ -157,14 +142,9 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self,
         api_token: str,
         model: str,
-        cli_url: str = DEFAULT_CLI_URL,
     ) -> None:
         """Validate credentials."""
         client_options: dict[str, Any] = {"github_token": api_token}
-        if cli_url.strip():
-            # The github-copilot-sdk (>=0.1.24) supports a "cli_url" client option
-            # to connect to a remote Copilot CLI server instead of the local binary.
-            client_options["cli_url"] = cli_url.strip()
         client = GitHubCopilotApiClient(
             model=model,
             client_options=client_options,
@@ -181,12 +161,14 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception as exception:
             # Wrap any unexpected exception
             LOGGER.exception(
-                "Unexpected exception during credential test: %s",
+                "Unexpected exception during credential test: %s - %s. "
+                "Full details in traceback.",
                 type(exception).__name__,
+                str(exception),
             )
             msg = (
                 f"Unexpected error during credential validation: "
-                f"{type(exception).__name__}"
+                f"{type(exception).__name__}: {exception}"
             )
             raise GitHubCopilotApiClientError(msg) from exception
         finally:

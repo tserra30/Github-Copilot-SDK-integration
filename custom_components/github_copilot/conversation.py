@@ -161,7 +161,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             self.sessions[conversation_id] = session_context
             self._session_last_used[conversation_id] = time.time()
         except GitHubCopilotApiClientAuthenticationError as err:
-            LOGGER.error("Authentication error creating session: %s", err)
+            LOGGER.error(
+                "Authentication error creating session: %s - %s",
+                type(err).__name__,
+                str(err),
+                exc_info=True,
+            )
             error_result = self._create_error_result(
                 language,
                 conversation_id,
@@ -170,7 +175,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 "an active Copilot subscription.",
             )
         except GitHubCopilotApiClientCommunicationError as err:
-            LOGGER.error("Communication error creating session: %s", err)
+            LOGGER.error(
+                "Communication error creating session: %s - %s",
+                type(err).__name__,
+                str(err),
+                exc_info=True,
+            )
             error_result = self._create_error_result(
                 language,
                 conversation_id,
@@ -179,7 +189,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 "and verify your network connection.",
             )
         except GitHubCopilotApiClientError as err:
-            LOGGER.error("Error creating session: %s", err)
+            LOGGER.error(
+                "Error creating session: %s - %s",
+                type(err).__name__,
+                str(err),
+                exc_info=True,
+            )
             error_result = self._create_error_result(
                 language,
                 conversation_id,
@@ -201,8 +216,10 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             client = self.entry.runtime_data.client
         except AttributeError as err:
             LOGGER.error(
-                "Failed to access API client - integration may be incomplete: %s",
-                err,
+                "Failed to access API client - integration may be incomplete: %s - %s",
+                type(err).__name__,
+                str(err),
+                exc_info=True,
             )
             return self._create_error_result(
                 user_input.language,
@@ -242,7 +259,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 conversation_id=conversation_id,
             )
         except GitHubCopilotApiClientAuthenticationError as err:
-            LOGGER.error("Authentication error during conversation: %s", err)
+            LOGGER.error(
+                "Authentication error during conversation: %s - %s",
+                type(err).__name__,
+                str(err),
+                exc_info=True,
+            )
             self.sessions.pop(conversation_id, None)
             self._session_last_used.pop(conversation_id, None)
             result = self._create_error_result(
@@ -252,7 +274,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 "Please reload the integration and try again.",
             )
         except GitHubCopilotApiClientCommunicationError as err:
-            LOGGER.error("Communication error during conversation: %s", err)
+            LOGGER.error(
+                "Communication error during conversation: %s - %s",
+                type(err).__name__,
+                str(err),
+                exc_info=True,
+            )
             self.sessions.pop(conversation_id, None)
             self._session_last_used.pop(conversation_id, None)
             result = self._create_error_result(
@@ -262,7 +289,12 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 "Please check your network and try again.",
             )
         except GitHubCopilotApiClientError as err:
-            LOGGER.error("Error processing conversation: %s", err)
+            LOGGER.error(
+                "Error processing conversation: %s - %s",
+                type(err).__name__,
+                str(err),
+                exc_info=True,
+            )
             self.sessions.pop(conversation_id, None)
             self._session_last_used.pop(conversation_id, None)
             result = self._create_error_result(
@@ -272,8 +304,9 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 "Please try again or check the logs for details.",
             )
         except Exception as err:  # noqa: BLE001
-            LOGGER.error(
-                "Unexpected error processing conversation: %s - %s",
+            LOGGER.exception(
+                "Unexpected error processing conversation: %s - %s. "
+                "Full traceback in logs.",
                 type(err).__name__,
                 str(err),
             )
