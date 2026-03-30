@@ -169,12 +169,14 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         cli_url: str = DEFAULT_CLI_URL,
     ) -> None:
         """Validate credentials."""
-        client_options: dict[str, Any] = {"github_token": api_token}
+        client_options: dict[str, Any] = {}
         if cli_url.strip():
-            # The github-copilot-sdk supports a "cli_url" client option
-            # to connect to a remote Copilot CLI server (like the bridge add-on)
-            # instead of the local binary.
+            # Remote CLI mode: the external server manages its own authentication,
+            # so github_token must NOT be passed (SDK enforces this constraint).
             client_options["cli_url"] = cli_url.strip()
+        else:
+            # Local CLI mode: authenticate using the provided GitHub token.
+            client_options["github_token"] = api_token
         client = GitHubCopilotApiClient(
             model=model,
             client_options=client_options,
