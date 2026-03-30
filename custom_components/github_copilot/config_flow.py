@@ -55,10 +55,14 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             model = user_input.get(CONF_MODEL, DEFAULT_MODEL)
             cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
+            api_token = user_input.get(CONF_API_TOKEN, "").strip()
 
             # Validate the CLI URL format if provided
             if cli_url and not _validate_cli_url(cli_url):
                 _errors[CONF_CLI_URL] = "invalid_url"
+            elif not cli_url and not api_token:
+                # Local mode requires a GitHub token; remote mode does not.
+                _errors[CONF_API_TOKEN] = "token_required"
 
             if not _errors:
                 try:
@@ -67,7 +71,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                         model,
                     )
                     await self._test_credentials(
-                        api_token=user_input[CONF_API_TOKEN],
+                        api_token=api_token,
                         model=model,
                         cli_url=cli_url,
                     )
@@ -104,10 +108,14 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                         "GitHub Copilot integration configured with model '%s'",
                         model,
                     )
-                    # Normalize the cli_url to the stripped value before persisting
+                    # Normalize the cli_url to the stripped value before persisting.
+                    # In remote mode, don't persist the token (server handles auth).
+                    data = {**user_input, CONF_CLI_URL: cli_url}
+                    if cli_url:
+                        data.pop(CONF_API_TOKEN, None)
                     return self.async_create_entry(
                         title="GitHub Copilot",
-                        data={**user_input, CONF_CLI_URL: cli_url},
+                        data=data,
                     )
 
         try:
@@ -115,7 +123,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="user",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_API_TOKEN): selector.TextSelector(
+                        vol.Optional(CONF_API_TOKEN): selector.TextSelector(
                             selector.TextSelectorConfig(
                                 type=selector.TextSelectorType.PASSWORD,
                             ),
@@ -156,7 +164,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="user",
                 data_schema=vol.Schema(
                     {
-                        vol.Required(CONF_API_TOKEN): str,
+                        vol.Optional(CONF_API_TOKEN): str,
                     }
                 ),
                 errors={"base": "unknown"},
@@ -170,10 +178,10 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> None:
         """Validate credentials."""
         client_options: dict[str, Any] = {}
-        if cli_url.strip():
+        if cli_url:
             # Remote CLI mode: the external server manages its own authentication,
             # so github_token must NOT be passed (SDK enforces this constraint).
-            client_options["cli_url"] = cli_url.strip()
+            client_options["cli_url"] = cli_url
         else:
             # Local CLI mode: authenticate using the provided GitHub token.
             client_options["github_token"] = api_token

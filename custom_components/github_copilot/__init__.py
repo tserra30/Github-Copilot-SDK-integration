@@ -51,12 +51,13 @@ async def async_setup_entry(
             update_interval=timedelta(hours=1),
         )
         cli_url = entry.data.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
+        client_options: dict[str, str] = {}
         if cli_url:
             # Remote CLI mode: external server manages its own auth; omit github_token.
-            client_options: dict[str, str] = {"cli_url": cli_url}
+            client_options["cli_url"] = cli_url
         else:
             # Local CLI mode: authenticate using the stored GitHub token.
-            client_options = {"github_token": entry.data[CONF_API_TOKEN]}
+            client_options["github_token"] = entry.data.get(CONF_API_TOKEN, "")
 
         # Normalize legacy model IDs (e.g. "claude-3.5-sonnet" → "claude-3-5-sonnet")
         # stored in config entries created before the model names were corrected.
