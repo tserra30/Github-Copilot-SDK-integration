@@ -79,8 +79,8 @@ For best results, always use the latest versions of both the add-on and the inte
 
 ## Notes
 
-- The add-on requires a valid GitHub Personal Access Token with Copilot permissions
-- The same token must be configured in both the add-on and the integration
+- The add-on requires a valid GitHub Personal Access Token with Copilot permissions (provided to the add-on as `GH_TOKEN`)
+- When the Home Assistant integration is configured in remote/bridge mode (`cli_url` set), it does not store or pass a GitHub token; authentication is handled entirely by the bridge add-on via its own `GH_TOKEN`
 - The add-on URL format is `http://<hostname>:8000` where hostname can be found in the add-on Info tab
 - The bridge add-on is especially useful for Home Assistant OS users where manual CLI installation is challenging
 
