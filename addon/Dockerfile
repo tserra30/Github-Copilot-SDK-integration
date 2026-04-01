@@ -11,7 +11,7 @@ RUN apt-get update \
 
 # Install the GitHub Copilot CLI from a pinned release, verifying the SHA-256 checksum.
 # Only linux/amd64 and linux/arm64 binaries are published; other architectures are unsupported.
-ARG COPILOT_VERSION=v1.0.9
+ARG COPILOT_VERSION=v1.0.13
 RUN case "$(uname -m)" in \
       x86_64)  ARCH="x64"   ;; \
       aarch64) ARCH="arm64" ;; \
