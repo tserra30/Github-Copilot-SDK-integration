@@ -1,9 +1,5 @@
 colorlog==6.10.1
-# github-copilot-sdk is NOT installed by default.
-# Add-on mode users connect to the bridge server and do not need the SDK.
-# To install for local CLI mode, run: COPILOT_SDK=1 ./scripts/setup
-# Or directly: pip install 'github-copilot-sdk==0.1.32'
-# On Home Assistant OS (glibc < 2.28) use: pip install 'github-copilot-sdk==0.1.22'
+github-copilot-sdk==0.1.32
 # Pin to a released Home Assistant version so CI dependency installs succeed
 homeassistant==2024.12.3
 pip>=21.3.1

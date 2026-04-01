@@ -10,18 +10,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    import copilot as copilot  # noqa: PLC0414 — only for type annotations
+
 try:
-    import copilot
+    import copilot  # type: ignore[no-redef]
 
     _COPILOT_SDK_AVAILABLE = True
 except ImportError:
-    copilot = None  # type: ignore[assignment]
     _COPILOT_SDK_AVAILABLE = False
 
 from .const import LOGGER
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
 _SDK_INSTALL_HINT = (
     "The github-copilot-sdk package is required but is not installed. "
@@ -89,7 +90,7 @@ class CopilotSessionContext:
     """In-memory session context for Copilot SDK conversations."""
 
     session_id: str
-    copilot_session: Any
+    copilot_session: copilot.CopilotSession
 
 
 class GitHubCopilotApiClient:
@@ -104,7 +105,7 @@ class GitHubCopilotApiClient:
         """Initialize GitHub Copilot SDK client wrapper."""
         self._model = model
         self._client_options = client_options or {}
-        self._client: Any | None = None
+        self._client: copilot.CopilotClient | None = None
         self._sessions: dict[str, CopilotSessionContext] = {}
         self._session_lock = asyncio.Lock()
         self._client_lock = asyncio.Lock()
@@ -460,7 +461,7 @@ class GitHubCopilotApiClient:
             return f" (errno: {exception.errno})"
         return ""
 
-    async def _ensure_client(self) -> Any:
+    async def _ensure_client(self) -> copilot.CopilotClient:
         """Ensure the Copilot SDK client is started."""
         async with self._client_lock:
             if self._client:
