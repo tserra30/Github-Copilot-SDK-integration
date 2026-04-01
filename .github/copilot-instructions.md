@@ -35,6 +35,8 @@ This repository contains a Home Assistant custom integration that brings GitHub 
 - Update README.md for user-facing changes
 - Keep README.md and CONTRIBUTING.md aligned for technical documentation
 - Keep code comments minimal but meaningful
+- **Maintain addon/CHANGELOG.md** when making changes to the bridge add-on (Dockerfile, run.sh, config.yaml, build.yaml)
+- Follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format for changelog entries
 
 ## Project Structure
 
@@ -47,6 +49,13 @@ custom_components/github_copilot/
 ├── coordinator.py        # Data update coordinator
 ├── const.py              # Constants and configuration
 └── data.py               # Data models
+
+addon/                    # GitHub Copilot Bridge Add-on
+├── Dockerfile            # Container image definition with Copilot CLI
+├── config.yaml           # Add-on metadata and configuration schema
+├── run.sh                # Server startup script with auth and retry logic
+├── build.yaml            # Multi-arch build configuration
+└── CHANGELOG.md          # Add-on version history and changes
 ```
 
 ## Key Components
@@ -66,8 +75,56 @@ custom_components/github_copilot/
 ### Configuration Flow (`config_flow.py`)
 - Validates credentials during setup
 - Provides clear error messages for users
-- Supports optional configuration parameters (model)
+- Supports optional configuration parameters (model, cli_url)
 - Follows Home Assistant's config flow patterns
+- **cli_url parameter**: Enables connection to remote Copilot CLI server (bridge add-on)
+- **Mutual exclusion**: When `cli_url` is provided, `github_token` is NOT passed to SDK (remote server handles auth)
+
+### Bridge Add-on (`addon/`)
+- **Purpose**: Runs GitHub Copilot CLI as a headless server for Home Assistant OS users
+- **Dockerfile**:
+  - Uses Debian Bullseye base for native glibc support (required by Copilot CLI)
+  - Pins Copilot CLI version (currently v1.0.13) with SHA256 verification
+  - Supports amd64 and aarch64 architectures
+- **run.sh**:
+  - Authenticates CLI via GH_TOKEN environment variable
+  - Implements feature detection for optional CLI flags (--bind, --no-auto-update, --log-level)
+  - Includes retry mechanism (up to 5 attempts with 5-second delays)
+  - Hardened auth probe with timeout protection
+- **Current version**: v3.8.3
+- **Server port**: 8000 (internal Supervisor network only)
+- **When to update**: Bump version in `config.yaml` when making significant changes to Dockerfile or run.sh
+
+## Recent Important Changes (March-April 2026)
+
+### Protocol v3 Support (PR #105)
+- **Integration**: Updated github-copilot-sdk from 0.1.22 to 0.1.32
+- **Add-on**: Updated Copilot CLI from v1.0.9 to v1.0.13
+- **Impact**: Fixes hard failure when CLI reports protocol v3
+- **Backward compatibility**: SDK still accepts protocol v2
+
+### CLI URL and Token Mutual Exclusion (PR #103)
+- **Bug fixed**: SDK raised ValueError when both `github_token` and `cli_url` were provided
+- **Solution**: `client_options` now uses mutual exclusion
+  - Remote mode (cli_url): Server manages own auth, no token passed to SDK
+  - Local mode (no cli_url): Token required and passed to SDK
+- **Config flow**: Token is now optional when using bridge add-on
+- **Impact**: Bridge add-on users no longer hit "Invalid Copilot client configuration" error
+
+### Bridge Add-on Stability Improvements (PR #97)
+- Enhanced authentication probe with timeout protection
+- Improved feature detection for CLI flags across versions
+- Better error handling and retry logic
+
+### Base Image Migration (PR #74, #69)
+- Migrated from Alpine (musl) to Debian Bullseye (glibc)
+- **Reason**: Copilot CLI requires glibc, Alpine caused crashes
+- **Result**: Improved stability and native binary support
+
+### Home Assistant OS Compatibility (PR #82, #98)
+- github-copilot-sdk 0.1.22 is last version with universal py3-none-any wheels
+- Versions 0.1.23+ use manylinux wheels not recognized by HA OS pip
+- Bridge add-on is the recommended solution for HA OS users
 
 ## Development Workflow
 
@@ -265,12 +322,19 @@ When adding new features:
 
 ### Root Directory Files
 - `.ruff.toml` - Ruff linter configuration
-- `requirements.txt` - Python dependencies (colorlog, github-copilot-sdk==0.1.24, homeassistant==2024.12.3, ruff==0.15.1)
+- `requirements.txt` - Python dependencies (colorlog, github-copilot-sdk==0.1.32, homeassistant==2024.12.3, ruff==0.15.8)
 - `hacs.json` - HACS integration metadata
 - `.devcontainer.json` - Dev container configuration
 - `README.md` - User documentation
 - `CONTRIBUTING.md` - Contribution guidelines
 - `SECURITY.md` - Security policy
+
+### Add-on Directory Files
+- `addon/Dockerfile` - Container image with Copilot CLI v1.0.13
+- `addon/config.yaml` - Add-on metadata, version v3.8.3
+- `addon/run.sh` - Server startup script with auth and retry logic
+- `addon/build.yaml` - Multi-architecture build configuration
+- `addon/CHANGELOG.md` - Add-on version history (maintain when updating add-on)
 
 ### GitHub Workflows
 - `.github/workflows/lint.yml` - Linting checks (ruff)
