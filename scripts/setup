@@ -4,4 +4,16 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+# Install base dependencies (does not include the SDK).
 python3 -m pip install --requirement requirements.txt
+
+# Optionally install the GitHub Copilot SDK for local/direct CLI mode.
+# Default: skip SDK (add-on mode is recommended and does not need the SDK).
+# Override with: COPILOT_SDK=1 ./scripts/setup
+if [ "${COPILOT_SDK:-0}" = "1" ]; then
+    echo "Installing GitHub Copilot SDK for local CLI mode..."
+    python3 -m pip install "github-copilot-sdk==0.1.32"
+else
+    echo "Skipping GitHub Copilot SDK (add-on mode assumed)."
+    echo "To install the SDK for local CLI mode, run: COPILOT_SDK=1 ./scripts/setup"
+fi

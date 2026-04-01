@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Enhanced CLI server stability** with improved retry mechanism and error handling
 - **Fixed authentication flow** to work correctly with token-only setups when using the bridge add-on
+- **SDK is no longer an auto-installed dependency** of the Home Assistant integration ([#107](https://github.com/tserra30/Github-Copilot-SDK-integration/issues))
+  - Removed `github-copilot-sdk` from `manifest.json` requirements so Home Assistant will not attempt to install it automatically
+  - Eliminates the `manylinux_2_28` wheel platform error on Home Assistant OS and systems with older glibc versions
+  - The bridge add-on itself has never needed the Python SDK; this change aligns the integration's declared dependencies with actual add-on-mode requirements
+  - Users who want **local CLI mode** (no add-on) must now install the SDK manually: `pip install 'github-copilot-sdk==0.1.32'`; on Home Assistant OS use the universal-wheel build: `pip install 'github-copilot-sdk==0.1.22'`
 
 ## [v3.7.5] - 2026-03-25
 
@@ -71,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The bridge add-on is designed to work seamlessly with the GitHub Copilot Home Assistant integration:
 
-- **v3.8.3 (current)**: Compatible with integration v1.0.5 using github-copilot-sdk 0.1.32
+- **v3.8.3 (current)**: Compatible with integration v1.0.5; github-copilot-sdk is now **optional** — not installed automatically. Install it manually when needed.
 - **v3.7.5 - v3.6.0**: Compatible with integration v1.0.4 using github-copilot-sdk 0.1.22
 - **Earlier versions**: Compatible with older integration versions
 

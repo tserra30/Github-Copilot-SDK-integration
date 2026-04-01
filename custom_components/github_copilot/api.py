@@ -10,12 +10,25 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import copilot
+try:
+    import copilot
+
+    _COPILOT_SDK_AVAILABLE = True
+except ImportError:
+    copilot = None  # type: ignore[assignment]
+    _COPILOT_SDK_AVAILABLE = False
 
 from .const import LOGGER
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+_SDK_INSTALL_HINT = (
+    "The github-copilot-sdk package is required but is not installed. "
+    "Install it with: pip install 'github-copilot-sdk==0.1.32'\n"
+    "On Home Assistant OS (glibc < 2.28) use the universal-wheel build instead: "
+    "pip install 'github-copilot-sdk==0.1.22'"
+)
 
 
 class GitHubCopilotApiClientError(Exception):
@@ -76,7 +89,7 @@ class CopilotSessionContext:
     """In-memory session context for Copilot SDK conversations."""
 
     session_id: str
-    copilot_session: copilot.CopilotSession
+    copilot_session: Any
 
 
 class GitHubCopilotApiClient:
@@ -91,7 +104,7 @@ class GitHubCopilotApiClient:
         """Initialize GitHub Copilot SDK client wrapper."""
         self._model = model
         self._client_options = client_options or {}
-        self._client: copilot.CopilotClient | None = None
+        self._client: Any | None = None
         self._sessions: dict[str, CopilotSessionContext] = {}
         self._session_lock = asyncio.Lock()
         self._client_lock = asyncio.Lock()
@@ -447,11 +460,18 @@ class GitHubCopilotApiClient:
             return f" (errno: {exception.errno})"
         return ""
 
-    async def _ensure_client(self) -> copilot.CopilotClient:
+    async def _ensure_client(self) -> Any:
         """Ensure the Copilot SDK client is started."""
         async with self._client_lock:
             if self._client:
                 return self._client
+
+            if not _COPILOT_SDK_AVAILABLE:
+                LOGGER.error(
+                    "github-copilot-sdk is not installed. %s",
+                    _SDK_INSTALL_HINT,
+                )
+                raise GitHubCopilotApiClientError(_SDK_INSTALL_HINT)
 
             # Skip local CLI check when a remote CLI URL is configured
             using_remote_cli = bool(self._client_options.get("cli_url", "").strip())
