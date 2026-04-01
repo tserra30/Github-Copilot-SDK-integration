@@ -37,6 +37,25 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant using the
 
 Installing the Copilot CLI inside the Home Assistant Core container can be difficult on Home Assistant OS. The included **GitHub Copilot Bridge** add-on solves this by running the CLI in a dedicated container that the integration connects to over the internal network.
 
+**Current Version**: v3.8.3
+
+**Key Features**:
+- 🐳 **Containerized Copilot CLI server** running on port 8000 (internal network only)
+- 🔄 **Automatic retry mechanism** with up to 5 restart attempts on failures
+- 🔐 **Token-based authentication** via environment variables (no interactive prompts)
+- 🏗️ **Multi-architecture support** for amd64 and aarch64 systems
+- ✅ **SHA256 checksum verification** for CLI binary integrity
+- 🚀 **Auto-start on boot** with configurable GitHub token
+- 🛡️ **Hardened authentication** with timeout protection to prevent startup blocking
+- 🎯 **Feature detection** for CLI flags to support multiple Copilot CLI versions
+
+**Recent Updates** (March-April 2026):
+- ✨ **v3.8.3**: Updated Copilot CLI to v1.0.13 for protocol v3 support
+- 🔧 **v3.7.5**: Enhanced auth probe mechanism and CLI flag compatibility
+- 🏔️ **v3.5.0**: Migrated to Debian Bullseye base for native glibc support (fixes CLI crashes)
+
+For complete version history, see [addon/CHANGELOG.md](addon/CHANGELOG.md).
+
 ### Installing the Add-on
 
 1. In Home Assistant, go to **Settings** → **Add-ons** → **Add-on Store**
@@ -68,11 +87,13 @@ For example: `http://a1b2c3d4_github_copilot_bridge:8000`
 2. Click **Add Integration**
 3. Search for **GitHub Copilot**
 4. Fill in the configuration:
-   - **GitHub Token** – Your GitHub personal access token with Copilot permissions
+   - **GitHub Token** – Your GitHub personal access token with Copilot permissions (optional when using Bridge add-on)
    - **Model** – Select from GPT-4o (default), GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, or Claude 3.5 Sonnet
    - **Copilot CLI URL (add-on)** *(optional)* – URL of the GitHub Copilot Bridge add-on (e.g. `http://a1b2c3d4_github_copilot_bridge:8000`). Leave empty to use a locally installed Copilot CLI.
 
 > **Tip for Home Assistant OS users**: Install the GitHub Copilot Bridge add-on (see above) and enter its URL in the "Copilot CLI URL" field. This is the easiest way to get the integration working without manually installing the CLI in the Core container.
+
+> **Note**: When using the Bridge add-on (with CLI URL), you can optionally provide the GitHub Token in the integration setup for reference, but the integration will not pass it to the SDK since the remote server manages its own authentication. The token configured in the add-on itself is what matters for authentication.
 
 ### Getting a GitHub Token
 
