@@ -95,6 +95,8 @@ For example: `http://a1b2c3d4_github_copilot_bridge:8000`
 
 > **Note**: When using the Bridge add-on (with CLI URL), you can optionally provide the GitHub Token in the integration setup for reference, but the integration will not pass it to the SDK since the remote server manages its own authentication. The token configured in the add-on itself is what matters for authentication.
 
+> **SDK requirement (all modes)**: The `github-copilot-sdk` package is required whether you connect to a locally installed Copilot CLI or to the Bridge add-on via "Copilot CLI URL" — it is the Python client library the integration uses in both cases. Home Assistant will attempt to install it automatically, but on some systems (particularly Home Assistant OS with glibc < 2.28) this may fail. See the [Troubleshooting](#unable-to-install-package-github-copilot-sdk--manylinux-wheel-error) section for platform-specific installation instructions. When you leave "Copilot CLI URL" empty (local mode), you **must also** have the Copilot CLI binary installed and authenticated on the same host. The Bridge add-on already includes and manages its own CLI binary.
+
 ### Getting a GitHub Token
 
 To use this integration, you need a GitHub personal access token that can authenticate the Copilot SDK:
@@ -136,6 +138,34 @@ automation:
 For detailed setup and usage guidance, use this README. For contributing and development details, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Troubleshooting
+
+### "Unable to install package github-copilot-sdk" / manylinux Wheel Error
+
+If you see an error like:
+
+```
+Unable to install package github-copilot-sdk==0.1.32:
+× No solution found when resolving dependencies:
+  Because github-copilot-sdk==0.1.32 has no wheels with a matching platform tag
+  (e.g., linux_x86_64)…
+  Wheels available: manylinux_2_28_aarch64, manylinux_2_28_x86_64, …
+```
+
+This means your Home Assistant installation is running on a system with **glibc < 2.28** (common on Home Assistant OS and older embedded Linux distributions). Home Assistant will still attempt to install `github-copilot-sdk==0.1.32` automatically, but the install fails because only `manylinux_2_28` wheels exist for that version.
+
+The SDK is required in **both** modes (bridge add-on and local CLI). To resolve the installation failure, install a compatible version manually:
+
+- **Most Linux systems (glibc ≥ 2.28)** — latest release:
+  ```bash
+  pip install 'github-copilot-sdk==0.1.32'
+  ```
+- **Home Assistant OS / systems with older glibc** — universal-wheel build:
+  ```bash
+  pip install 'github-copilot-sdk==0.1.22'
+  ```
+  Version 0.1.22 is the last release that ships a pure-Python `py3-none-any` wheel and installs on every platform. It is fully compatible with the Bridge add-on's CLI server (the server falls back to protocol v2 automatically).
+
+> **Note**: The Bridge add-on eliminates the need to install the **Copilot CLI binary** locally, but the Python `github-copilot-sdk` package is still required by the integration to communicate with that server.
 
 ### "Unable to connect to Copilot CLI" Error
 

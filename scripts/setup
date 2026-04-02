@@ -4,4 +4,16 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+# Install base dependencies (including the GitHub Copilot SDK client library).
+# The SDK is required by the integration in all modes (local CLI and bridge add-on).
 python3 -m pip install --requirement requirements.txt
+
+# Optionally re-install/pin the SDK explicitly (e.g., for local CLI development).
+# Override with: COPILOT_SDK=1 ./scripts/setup
+if [ "${COPILOT_SDK:-0}" = "1" ]; then
+    echo "Installing GitHub Copilot SDK explicitly for local CLI mode..."
+    python3 -m pip install "github-copilot-sdk==0.1.32"
+else
+    echo "Using GitHub Copilot SDK version from requirements.txt."
+    echo "To force SDK reinstall for local CLI mode, run: COPILOT_SDK=1 ./scripts/setup"
+fi
