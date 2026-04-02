@@ -141,21 +141,19 @@ For detailed setup and usage guidance, use this README. For contributing and dev
 
 ### SDK Installation
 
-This integration uses a **patched version** of `github-copilot-sdk` built from version 0.1.22 source with protocol v3 support added.
+This integration uses `github-copilot-sdk==0.1.22` from PyPI.
 
-**Why a patched version?**
+**Why version 0.1.22?**
 - **SDK 0.1.22**: Has universal `py3-none-any` wheels that work on Home Assistant OS
 - **SDK 0.1.23+**: Only have `manylinux_2_28` wheels requiring glibc ≥ 2.28 (incompatible with Home Assistant OS)
-- **Protocol Issue**: Stock SDK 0.1.22 only supports protocol v2, but CLI v1.0.13 uses protocol v3
-- **Our Solution**: Patched SDK 0.1.22 with protocol v3 support, distributed as universal wheel
+- **Home Assistant OS**: Has older glibc and cannot install SDK 0.1.23+
 
-**Patches Applied:**
-1. Updated `SDK_PROTOCOL_VERSION` from 2 to 3
-2. Modified protocol check to accept both v2 and v3 (backward compatible)
+**Known Limitation:**
+- SDK 0.1.22 officially supports protocol v2
+- The Bridge add-on (CLI v1.0.13) uses protocol v3
+- In practice, the SDK's protocol negotiation allows basic compatibility, though some features may not work correctly
 
-The patched wheel is built in CI, hosted in this repository's `wheels/` directory, and automatically installed by Home Assistant when you add the integration. The SDK is required in **both** modes (bridge add-on and local CLI) as it's the Python client library used by the integration.
-
-For technical details, see `wheels/README.md`.
+The SDK is automatically installed by Home Assistant when you add the integration. The SDK is required in **both** modes (bridge add-on and local CLI) as it's the Python client library used by the integration.
 
 > **Note**: The Bridge add-on eliminates the need to install the **Copilot CLI binary** locally, but the Python `github-copilot-sdk` package is still required by the integration to communicate with that server.
 

@@ -8,14 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- **Integration now uses patched github-copilot-sdk with protocol v3 support** (this PR)
-  - Built from SDK 0.1.22 source with patches for protocol v3 compatibility
-  - Updated `SDK_PROTOCOL_VERSION` from 2 to 3
-  - Modified protocol check to accept both v2 and v3 (backward compatible)
-  - Maintains universal `py3-none-any` wheel that installs on all platforms including Home Assistant OS
-  - Resolves issue #104: "SDK protocol version mismatch" error with CLI v1.0.13
-  - Patched wheel built in CI and hosted in repository `wheels/` directory
-  - Installed via direct GitHub URL to avoid Home Assistant OS glibc < 2.28 incompatibility
+- **Integration reverted to stock github-copilot-sdk 0.1.22 from PyPI** (this PR)
+  - Uses universal `py3-none-any` wheel that installs on all platforms including Home Assistant OS
+  - Known limitation: SDK 0.1.22 officially supports protocol v2, CLI v1.0.13 uses protocol v3
+  - Basic compatibility is maintained through SDK's protocol negotiation, though some features may not work correctly
+  - Patched SDK approach abandoned due to Home Assistant manifest.json constraints (URL-based requirements not supported)
 
 ## [v3.8.3] - 2026-04-01
 
