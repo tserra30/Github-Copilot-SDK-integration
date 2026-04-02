@@ -5,6 +5,16 @@ All notable changes to the GitHub Copilot Bridge add-on will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Integration now uses github-copilot-sdk==0.1.22 by default** (this PR)
+  - Version 0.1.22 has universal `py3-none-any` wheels that install on all platforms including Home Assistant OS
+  - Newer versions (0.1.23+) only ship `manylinux_2_28` wheels that require glibc ≥ 2.28
+  - Home Assistant OS and many embedded systems have older glibc and cannot install 0.1.23+
+  - Version 0.1.22 supports protocol v2 and auto-negotiates with the CLI's protocol v3 when available
+  - The bridge add-on CLI v1.0.13 remains unchanged and supports both protocol versions
+
 ## [v3.8.3] - 2026-04-01
 
 ### Changed

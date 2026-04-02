@@ -97,11 +97,19 @@ addon/                    # GitHub Copilot Bridge Add-on
 
 ## Recent Important Changes (March-April 2026)
 
+### SDK Version Downgrade for HA OS Compatibility (Current PR)
+- **Integration**: Downgraded github-copilot-sdk from 0.1.32 to 0.1.22
+- **Reason**: Versions 0.1.23+ only ship manylinux_2_28 wheels that require glibc ≥ 2.28
+- **Impact**: Home Assistant OS and embedded systems with older glibc can now install the SDK
+- **Backward compatibility**: SDK 0.1.22 supports protocol v2 and auto-negotiates with CLI protocol v3
+- **Add-on unchanged**: CLI v1.0.13 remains and supports both protocol versions
+- **Solution**: Universal py3-none-any wheels in 0.1.22 work on all platforms
+
 ### Protocol v3 Support (PR #105)
-- **Integration**: Updated github-copilot-sdk from 0.1.22 to 0.1.32
+- **Integration**: Updated github-copilot-sdk from 0.1.22 to 0.1.32 (now reverted to 0.1.22 for compatibility)
 - **Add-on**: Updated Copilot CLI from v1.0.9 to v1.0.13
-- **Impact**: Fixes hard failure when CLI reports protocol v3
-- **Backward compatibility**: SDK still accepts protocol v2
+- **Impact**: CLI supports protocol v3, SDK 0.1.22 auto-negotiates protocol version
+- **Backward compatibility**: Both SDK and CLI support protocol v2
 
 ### CLI URL and Token Mutual Exclusion (PR #103)
 - **Bug fixed**: SDK raised ValueError when both `github_token` and `cli_url` were provided
@@ -322,7 +330,7 @@ When adding new features:
 
 ### Root Directory Files
 - `.ruff.toml` - Ruff linter configuration
-- `requirements.txt` - Python dependencies (colorlog, github-copilot-sdk==0.1.32, homeassistant==2024.12.3, ruff==0.15.8)
+- `requirements.txt` - Python dependencies (colorlog, github-copilot-sdk==0.1.22, homeassistant==2024.12.3, ruff==0.15.8)
 - `hacs.json` - HACS integration metadata
 - `.devcontainer.json` - Dev container configuration
 - `README.md` - User documentation
