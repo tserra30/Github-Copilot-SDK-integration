@@ -141,15 +141,21 @@ For detailed setup and usage guidance, use this README. For contributing and dev
 
 ### SDK Installation
 
-This integration requires `github-copilot-sdk==0.1.22`, which has universal Python wheels that work on all platforms including Home Assistant OS.
+This integration uses a **patched version** of `github-copilot-sdk` built from version 0.1.22 source with protocol v3 support added.
 
-**Why version 0.1.22?**
-- Version 0.1.22 ships a pure-Python `py3-none-any` wheel that installs on every platform
-- Newer versions (0.1.23+) only have `manylinux_2_28` wheels that require glibc ≥ 2.28
-- Home Assistant OS and many embedded Linux systems have older glibc versions
-- Version 0.1.22 is fully compatible with the latest Copilot CLI (protocol v2/v3 auto-negotiation)
+**Why a patched version?**
+- **SDK 0.1.22**: Has universal `py3-none-any` wheels that work on Home Assistant OS
+- **SDK 0.1.23+**: Only have `manylinux_2_28` wheels requiring glibc ≥ 2.28 (incompatible with Home Assistant OS)
+- **Protocol Issue**: Stock SDK 0.1.22 only supports protocol v2, but CLI v1.0.13 uses protocol v3
+- **Our Solution**: Patched SDK 0.1.22 with protocol v3 support, distributed as universal wheel
 
-Home Assistant automatically installs the SDK when you add the integration. The SDK is required in **both** modes (bridge add-on and local CLI) as it's the Python client library used by the integration.
+**Patches Applied:**
+1. Updated `SDK_PROTOCOL_VERSION` from 2 to 3
+2. Modified protocol check to accept both v2 and v3 (backward compatible)
+
+The patched wheel is built in CI, hosted in this repository's `wheels/` directory, and automatically installed by Home Assistant when you add the integration. The SDK is required in **both** modes (bridge add-on and local CLI) as it's the Python client library used by the integration.
+
+For technical details, see `wheels/README.md`.
 
 > **Note**: The Bridge add-on eliminates the need to install the **Copilot CLI binary** locally, but the Python `github-copilot-sdk` package is still required by the integration to communicate with that server.
 

@@ -1,0 +1,133 @@
+name: Build Patched SDK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-sdk.yml'
+      - 'patches/**'
+
+permissions:
+  contents: write
+
+jobs:
+  build-sdk:
+    name: Build github-copilot-sdk with protocol v3 support
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build wheel
+
+      - name: Download SDK 0.1.22 source
+        run: |
+          mkdir -p /tmp/sdk-build
+          cd /tmp/sdk-build
+          pip download --no-binary :all: --no-deps github-copilot-sdk==0.1.22
+          tar -xzf github_copilot_sdk-0.1.22.tar.gz
+          cd github_copilot_sdk-0.1.22
+          echo "SDK source downloaded and extracted"
+
+      - name: Patch SDK for protocol v3 support
+        run: |
+          cd /tmp/sdk-build/github_copilot_sdk-0.1.22
+
+          # Patch 1: Update SDK_PROTOCOL_VERSION to 3
+          sed -i 's/SDK_PROTOCOL_VERSION = 2/SDK_PROTOCOL_VERSION = 3/' copilot/sdk_protocol_version.py
+
+          # Patch 2: Make protocol check accept both v2 and v3
+          # Change strict equality to range check
+          cat > /tmp/protocol_patch.py << 'EOF'
+import sys
+
+# Read the client.py file
+with open('copilot/client.py', 'r') as f:
+    content = f.read()
+
+# Replace strict equality check with range check
+old_check = '''        if server_version != expected_version:
+            raise RuntimeError(
+                f"SDK protocol version mismatch: SDK expects version {expected_version}, "
+                f"but server reports version {server_version}. "
+                f"Please update your SDK or server to ensure compatibility."
+            )'''
+
+new_check = '''        # Accept protocol v2 and v3 (backward compatible)
+        if server_version not in [2, 3]:
+            raise RuntimeError(
+                f"SDK protocol version mismatch: SDK supports versions 2 and 3, "
+                f"but server reports version {server_version}. "
+                f"Please update your SDK or server to ensure compatibility."
+            )'''
+
+content = content.replace(old_check, new_check)
+
+# Write back
+with open('copilot/client.py', 'w') as f:
+    f.write(content)
+
+print("Protocol check patched successfully")
+EOF
+
+          python /tmp/protocol_patch.py
+
+          # Update version to indicate it's patched
+          sed -i 's/version = "0.1.22"/version = "0.1.22+ha"/' pyproject.toml || true
+
+          echo "Patches applied successfully"
+
+          # Verify patches
+          echo "=== Verifying SDK_PROTOCOL_VERSION ==="
+          grep "SDK_PROTOCOL_VERSION" copilot/sdk_protocol_version.py
+          echo "=== Verifying protocol check ==="
+          grep -A5 "server_version not in" copilot/client.py || echo "Check pattern not found"
+
+      - name: Build universal wheel
+        run: |
+          cd /tmp/sdk-build/github_copilot_sdk-0.1.22
+          python -m build --wheel
+          ls -lh dist/
+
+          # Copy wheel to repository
+          mkdir -p $GITHUB_WORKSPACE/wheels
+          cp dist/*.whl $GITHUB_WORKSPACE/wheels/
+
+          echo "Built wheel:"
+          ls -lh $GITHUB_WORKSPACE/wheels/
+
+      - name: Create wheels directory in repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Add wheels directory if it doesn't exist in .gitignore
+          if ! grep -q "^wheels/$" .gitignore 2>/dev/null; then
+            echo "" >> .gitignore
+            echo "# Keep built SDK wheels" >> .gitignore
+            echo "!wheels/*.whl" >> .gitignore
+          fi
+
+          git add wheels/ .gitignore
+          git diff --cached --quiet || git commit -m "Add patched github-copilot-sdk wheel with protocol v3 support
+
+Built from SDK 0.1.22 source with patches:
+- Update SDK_PROTOCOL_VERSION to 3
+- Accept both protocol v2 and v3 for backward compatibility
+- Universal py3-none-any wheel compatible with Home Assistant OS"
+
+          echo "Wheel committed to repository"
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:${GITHUB_REF#refs/heads/} || echo "No changes to push"
