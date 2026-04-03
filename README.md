@@ -95,7 +95,7 @@ For example: `http://a1b2c3d4_github_copilot_bridge:8000`
 
 > **Note**: When using the Bridge add-on (with CLI URL), you can optionally provide the GitHub Token in the integration setup for reference, but the integration will not pass it to the SDK since the remote server manages its own authentication. The token configured in the add-on itself is what matters for authentication.
 
-> **SDK requirement (all modes)**: The `github-copilot-sdk==0.1.22` package is required whether you connect to a locally installed Copilot CLI or to the Bridge add-on via "Copilot CLI URL" — it is the Python client library the integration uses in both cases. Home Assistant will install it automatically when you add the integration. Version 0.1.22 has universal Python wheels that work on all platforms including Home Assistant OS. See the [SDK Installation](#sdk-installation) section for details. When you leave "Copilot CLI URL" empty (local mode), you **must also** have the Copilot CLI binary installed and authenticated on the same host. The Bridge add-on already includes and manages its own CLI binary.
+> **SDK requirement (all modes)**: The `github-copilot-sdk` package is required whether you connect to a locally installed Copilot CLI or to the Bridge add-on via "Copilot CLI URL" — it is the Python client library the integration uses in both cases. On standard Linux systems (glibc ≥ 2.28), Home Assistant installs it automatically. On Home Assistant OS (glibc < 2.28), the default `0.1.32` wheel is incompatible — see the [SDK Installation](#sdk-installation) section for a workaround. When you leave "Copilot CLI URL" empty (local mode), you **must also** have the Copilot CLI binary installed and authenticated on the same host. The Bridge add-on already includes and manages its own CLI binary.
 
 ### Getting a GitHub Token
 
@@ -141,19 +141,22 @@ For detailed setup and usage guidance, use this README. For contributing and dev
 
 ### SDK Installation
 
-This integration uses `github-copilot-sdk==0.1.22` from PyPI.
+This integration uses `github-copilot-sdk==0.1.32` from PyPI. On most Linux systems (glibc ≥ 2.28) and Docker-based Home Assistant installations, this is installed automatically.
 
-**Why version 0.1.22?**
-- **SDK 0.1.22**: Has universal `py3-none-any` wheels that work on Home Assistant OS
-- **SDK 0.1.23+**: Only have `manylinux_2_28` wheels requiring glibc ≥ 2.28 (incompatible with Home Assistant OS)
-- **Home Assistant OS**: Has older glibc and cannot install SDK 0.1.23+
+**Home Assistant OS / older glibc (< 2.28):**
+- `github-copilot-sdk==0.1.32` only ships `manylinux_2_28` wheels that require glibc ≥ 2.28
+- Home Assistant OS has older glibc and **cannot** install `0.1.32` via the normal mechanism
+- To resolve this, use the Bridge add-on (which manages its own CLI and handles protocol v3) and manually install a compatible patched wheel:
+  ```bash
+  pip install 'github-copilot-sdk==0.1.22'
+  ```
+  > **Important notes:**
+  > - Version 0.1.22 is the last release with universal `py3-none-any` wheels.
+  > - Stock 0.1.22 only supports protocol v2; the Bridge add-on (CLI v1.0.13) uses protocol v3.
+  > - Do **not** assume stock 0.1.22 is protocol v3 compatible; use it only as a last resort.
+  > - A patched wheel with protocol v3 support can be built using the `.github/workflows/build-sdk.yml` workflow.
 
-**Known Limitation:**
-- SDK 0.1.22 officially supports protocol v2
-- The Bridge add-on (CLI v1.0.13) uses protocol v3
-- In practice, the SDK's protocol negotiation allows basic compatibility, though some features may not work correctly
-
-The SDK is automatically installed by Home Assistant when you add the integration. The SDK is required in **both** modes (bridge add-on and local CLI) as it's the Python client library used by the integration.
+The SDK is required in **both** modes (bridge add-on and local CLI) as it is the Python client library used by the integration.
 
 > **Note**: The Bridge add-on eliminates the need to install the **Copilot CLI binary** locally, but the Python `github-copilot-sdk` package is still required by the integration to communicate with that server.
 

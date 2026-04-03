@@ -46,6 +46,13 @@ jobs:
           # Patch 1: Update SDK_PROTOCOL_VERSION to 3
           sed -i 's/SDK_PROTOCOL_VERSION = 2/SDK_PROTOCOL_VERSION = 3/' copilot/sdk_protocol_version.py
 
+          # Verify Patch 1 applied
+          if ! grep -q "SDK_PROTOCOL_VERSION = 3" copilot/sdk_protocol_version.py; then
+            echo "ERROR: Patch 1 failed - SDK_PROTOCOL_VERSION was not updated to 3"
+            exit 1
+          fi
+          echo "Patch 1 verified: SDK_PROTOCOL_VERSION = 3"
+
           # Patch 2: Make protocol check accept both v2 and v3
           # Change strict equality to range check
           cat > /tmp/protocol_patch.py << 'EOF'
@@ -55,7 +62,6 @@ import sys
 with open('copilot/client.py', 'r') as f:
     content = f.read()
 
-# Replace strict equality check with range check
 old_check = '''        if server_version != expected_version:
             raise RuntimeError(
                 f"SDK protocol version mismatch: SDK expects version {expected_version}, "
@@ -71,27 +77,37 @@ new_check = '''        # Accept protocol v2 and v3 (backward compatible)
                 f"Please update your SDK or server to ensure compatibility."
             )'''
 
+if old_check not in content:
+    print("ERROR: old protocol check pattern not found in client.py - patch cannot be applied")
+    sys.exit(1)
+
 content = content.replace(old_check, new_check)
 
 # Write back
 with open('copilot/client.py', 'w') as f:
     f.write(content)
 
-print("Protocol check patched successfully")
+print("Patch 2 applied: protocol check updated")
 EOF
 
           python /tmp/protocol_patch.py
 
-          # Update version to indicate it's patched
-          sed -i 's/version = "0.1.22"/version = "0.1.22+ha"/' pyproject.toml || true
+          # Verify Patch 2 applied
+          if ! grep -q "server_version not in \[2, 3\]" copilot/client.py; then
+            echo "ERROR: Patch 2 failed - protocol range check not found in client.py"
+            exit 1
+          fi
+          echo "Patch 2 verified: protocol range check present"
 
-          echo "Patches applied successfully"
+          # Update version to indicate it's patched (fail if version line not found)
+          if ! grep -q 'version = "0.1.22"' pyproject.toml; then
+            echo "ERROR: version string not found in pyproject.toml - cannot bump version"
+            exit 1
+          fi
+          sed -i 's/version = "0.1.22"/version = "0.1.22+ha"/' pyproject.toml
+          echo "Version bumped to 0.1.22+ha"
 
-          # Verify patches
-          echo "=== Verifying SDK_PROTOCOL_VERSION ==="
-          grep "SDK_PROTOCOL_VERSION" copilot/sdk_protocol_version.py
-          echo "=== Verifying protocol check ==="
-          grep -A5 "server_version not in" copilot/client.py || echo "Check pattern not found"
+          echo "All patches applied and verified successfully"
 
       - name: Build universal wheel
         run: |

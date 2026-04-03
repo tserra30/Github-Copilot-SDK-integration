@@ -32,14 +32,21 @@ The wheel is built using GitHub Actions workflow `.github/workflows/build-sdk.ym
 
 ## Wheel Details
 
-- **Filename**: `github_copilot_sdk-0.1.22-py3-none-any.whl`
-- **Base Version**: 0.1.22
+- **Filename**: `github_copilot_sdk-0.1.22+ha-py3-none-any.whl`
+- **Base Version**: 0.1.22 (patched, with `+ha` local version identifier per PEP 440)
 - **Wheel Type**: Universal (py3-none-any)
 - **Compatible with**: All Python 3.x platforms including Home Assistant OS
 
 ## Installation
 
-Home Assistant will install this patched wheel automatically from the integration's `requirements`.
+This wheel is **not** installed automatically by Home Assistant from the integration's `requirements`.
+The integration installs `github-copilot-sdk==0.1.32` from PyPI on supported platforms.
+
+This patched wheel is intended for **Home Assistant OS users** (glibc < 2.28) who cannot install SDK 0.1.32. To install manually:
+
+```bash
+pip install wheels/github_copilot_sdk-0.1.22+ha-py3-none-any.whl
+```
 
 ## Verification
 
