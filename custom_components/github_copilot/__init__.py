@@ -37,6 +37,14 @@ PLATFORMS: list[Platform] = [
 ]
 
 
+async def async_reload_entry(
+    hass: HomeAssistant,
+    entry: GitHubCopilotConfigEntry,
+) -> None:
+    """Reload config entry."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -106,11 +114,3 @@ async def async_unload_entry(
     if unload_ok:
         await entry.runtime_data.client.async_close()
     return unload_ok
-
-
-async def async_reload_entry(
-    hass: HomeAssistant,
-    entry: GitHubCopilotConfigEntry,
-) -> None:
-    """Reload config entry."""
-    await hass.config_entries.async_reload(entry.entry_id)

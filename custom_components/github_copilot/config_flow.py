@@ -34,6 +34,72 @@ def _validate_cli_url(cli_url: str) -> bool:
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
 
 
+class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for GitHub Copilot integration."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.ConfigFlowResult:
+        """Handle options flow."""
+        _errors: dict[str, str] = {}
+        if user_input is not None:
+            cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
+
+            # Apply the same http/https validation as the initial config flow
+            if cli_url and not _validate_cli_url(cli_url):
+                _errors[CONF_CLI_URL] = "invalid_url"
+
+            if not _errors:
+                # Update the config entry with the normalized model and CLI URL
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data={
+                        **self.config_entry.data,
+                        CONF_MODEL: user_input[CONF_MODEL],
+                        CONF_CLI_URL: cli_url,
+                    },
+                )
+                return self.async_create_entry(title="", data={})
+
+        # Get current model from config entry, normalizing any legacy IDs.
+        current_model = self.config_entry.data.get(CONF_MODEL, DEFAULT_MODEL)
+        current_model = LEGACY_MODEL_MAP.get(current_model, current_model)
+
+        # Get current CLI URL from config entry
+        current_cli_url = self.config_entry.data.get(CONF_CLI_URL, DEFAULT_CLI_URL)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_MODEL,
+                        default=current_model,
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=SUPPORTED_MODELS,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        ),
+                    ),
+                    vol.Optional(
+                        CONF_CLI_URL,
+                        default=current_cli_url,
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.URL,
+                        ),
+                    ),
+                }
+            ),
+            errors=_errors,
+        )
+
+
 class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for GitHub Copilot."""
 
@@ -45,6 +111,51 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> GitHubCopilotOptionsFlow:
         """Get the options flow for this handler."""
         return GitHubCopilotOptionsFlow(config_entry)
+
+    async def _test_credentials(
+        self,
+        api_token: str,
+        model: str,
+        cli_url: str = DEFAULT_CLI_URL,
+    ) -> None:
+        """Validate credentials."""
+        client_options: dict[str, Any] = {}
+        if cli_url:
+            # Remote CLI mode: the external server manages its own authentication,
+            # so github_token must NOT be passed (SDK enforces this constraint).
+            client_options["cli_url"] = cli_url
+        else:
+            # Local CLI mode: authenticate using the provided GitHub token.
+            client_options["github_token"] = api_token
+        client = GitHubCopilotApiClient(
+            model=model,
+            client_options=client_options,
+        )
+        try:
+            await client.async_test_connection()
+        except (
+            GitHubCopilotApiClientAuthenticationError,
+            GitHubCopilotApiClientCommunicationError,
+            GitHubCopilotApiClientError,
+        ):
+            # Re-raise our custom exceptions as-is
+            raise
+        except Exception as exception:
+            # Wrap any unexpected exception
+            LOGGER.exception(
+                "Unexpected exception during credential test: %s - %s. "
+                "Full details in traceback.",
+                type(exception).__name__,
+                str(exception),
+            )
+            msg = (
+                f"Unexpected error during credential validation: "
+                f"{type(exception).__name__}: {exception}"
+            )
+            raise GitHubCopilotApiClientError(msg) from exception
+        finally:
+            # Always clean up the client, even on exception
+            await client.async_close()
 
     async def async_step_user(
         self,
@@ -169,114 +280,3 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
                 errors={"base": "unknown"},
             )
-
-    async def _test_credentials(
-        self,
-        api_token: str,
-        model: str,
-        cli_url: str = DEFAULT_CLI_URL,
-    ) -> None:
-        """Validate credentials."""
-        client_options: dict[str, Any] = {}
-        if cli_url:
-            # Remote CLI mode: the external server manages its own authentication,
-            # so github_token must NOT be passed (SDK enforces this constraint).
-            client_options["cli_url"] = cli_url
-        else:
-            # Local CLI mode: authenticate using the provided GitHub token.
-            client_options["github_token"] = api_token
-        client = GitHubCopilotApiClient(
-            model=model,
-            client_options=client_options,
-        )
-        try:
-            await client.async_test_connection()
-        except (
-            GitHubCopilotApiClientAuthenticationError,
-            GitHubCopilotApiClientCommunicationError,
-            GitHubCopilotApiClientError,
-        ):
-            # Re-raise our custom exceptions as-is
-            raise
-        except Exception as exception:
-            # Wrap any unexpected exception
-            LOGGER.exception(
-                "Unexpected exception during credential test: %s - %s. "
-                "Full details in traceback.",
-                type(exception).__name__,
-                str(exception),
-            )
-            msg = (
-                f"Unexpected error during credential validation: "
-                f"{type(exception).__name__}: {exception}"
-            )
-            raise GitHubCopilotApiClientError(msg) from exception
-        finally:
-            # Always clean up the client, even on exception
-            await client.async_close()
-
-
-class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for GitHub Copilot integration."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
-    async def async_step_init(
-        self,
-        user_input: dict[str, Any] | None = None,
-    ) -> config_entries.ConfigFlowResult:
-        """Handle options flow."""
-        _errors: dict[str, str] = {}
-        if user_input is not None:
-            cli_url = user_input.get(CONF_CLI_URL, DEFAULT_CLI_URL).strip()
-
-            # Apply the same http/https validation as the initial config flow
-            if cli_url and not _validate_cli_url(cli_url):
-                _errors[CONF_CLI_URL] = "invalid_url"
-
-            if not _errors:
-                # Update the config entry with the normalized model and CLI URL
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry,
-                    data={
-                        **self.config_entry.data,
-                        CONF_MODEL: user_input[CONF_MODEL],
-                        CONF_CLI_URL: cli_url,
-                    },
-                )
-                return self.async_create_entry(title="", data={})
-
-        # Get current model from config entry, normalizing any legacy IDs.
-        current_model = self.config_entry.data.get(CONF_MODEL, DEFAULT_MODEL)
-        current_model = LEGACY_MODEL_MAP.get(current_model, current_model)
-
-        # Get current CLI URL from config entry
-        current_cli_url = self.config_entry.data.get(CONF_CLI_URL, DEFAULT_CLI_URL)
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_MODEL,
-                        default=current_model,
-                    ): selector.SelectSelector(
-                        selector.SelectSelectorConfig(
-                            options=SUPPORTED_MODELS,
-                            mode=selector.SelectSelectorMode.DROPDOWN,
-                        ),
-                    ),
-                    vol.Optional(
-                        CONF_CLI_URL,
-                        default=current_cli_url,
-                    ): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.URL,
-                        ),
-                    ),
-                }
-            ),
-            errors=_errors,
-        )

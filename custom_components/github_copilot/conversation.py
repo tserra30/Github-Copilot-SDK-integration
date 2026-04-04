@@ -24,26 +24,6 @@ if TYPE_CHECKING:
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,  # noqa: ARG001
-    config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up GitHub Copilot conversation platform via config entry."""
-    try:
-        agent = GitHubCopilotConversationEntity(config_entry)
-        async_add_entities([agent])
-        LOGGER.debug("GitHub Copilot conversation entity setup completed")
-    except Exception as err:
-        # Don't log exception details to avoid exposing sensitive data
-        # such as config data, API credentials, or user information
-        LOGGER.error(
-            "Failed to set up GitHub Copilot conversation entity: %s",
-            type(err).__name__,
-        )
-        raise
-
-
 class GitHubCopilotConversationEntity(conversation.ConversationEntity):
     """GitHub Copilot conversation agent."""
 
@@ -317,3 +297,23 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 "Please check the Home Assistant logs for details.",
             )
         return result
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,  # noqa: ARG001
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up GitHub Copilot conversation platform via config entry."""
+    try:
+        agent = GitHubCopilotConversationEntity(config_entry)
+        async_add_entities([agent])
+        LOGGER.debug("GitHub Copilot conversation entity setup completed")
+    except Exception as err:
+        # Don't log exception details to avoid exposing sensitive data
+        # such as config data, API credentials, or user information
+        LOGGER.error(
+            "Failed to set up GitHub Copilot conversation entity: %s",
+            type(err).__name__,
+        )
+        raise

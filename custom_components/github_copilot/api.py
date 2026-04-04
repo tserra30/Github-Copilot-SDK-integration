@@ -132,166 +132,6 @@ class GitHubCopilotApiClient:
                 await self.async_end_session(session.session_id)
         return True
 
-    async def async_create_session(self) -> CopilotSessionContext:
-        """Create a Copilot SDK session."""
-        async with self._session_lock:
-            client = await self._ensure_client()
-            try:
-                copilot_session = await client.create_session(
-                    {
-                        "model": self._model,
-                        "streaming": False,
-                    }
-                )
-            except TimeoutError as exception:
-                LOGGER.error(
-                    "Timeout creating Copilot session with model '%s': %s - %s",
-                    self._model,
-                    type(exception).__name__,
-                    str(exception),
-                    exc_info=True,
-                )
-                msg = (
-                    f"Timeout creating session with model '{self._model}'. "
-                    "The Copilot service may be slow or unavailable."
-                )
-                raise GitHubCopilotApiClientCommunicationError(msg) from exception
-            except ValueError as exception:
-                LOGGER.error(
-                    "Invalid configuration for Copilot session: %s - %s",
-                    type(exception).__name__,
-                    str(exception),
-                    exc_info=True,
-                )
-                msg = (
-                    f"Invalid session configuration for model '{self._model}': "
-                    f"{exception}"
-                )
-                raise GitHubCopilotApiClientError(msg) from exception
-            except Exception as exception:
-                LOGGER.error(
-                    "Failed to create Copilot session with model '%s': %s - %s. "
-                    "Full traceback available.",
-                    self._model,
-                    type(exception).__name__,
-                    str(exception),
-                    exc_info=True,
-                )
-                msg = (
-                    f"Unable to start Copilot session with model '{self._model}': "
-                    f"{type(exception).__name__}: {exception}"
-                )
-                raise GitHubCopilotApiClientError(msg) from exception
-            session_context = CopilotSessionContext(
-                session_id=copilot_session.session_id,
-                copilot_session=copilot_session,
-            )
-            self._sessions[session_context.session_id] = session_context
-            LOGGER.debug(
-                "Created Copilot session %s with model '%s'",
-                session_context.session_id,
-                self._model,
-            )
-            return session_context
-
-    async def async_end_session(self, session_id: str) -> None:
-        """Destroy a Copilot SDK session."""
-        async with self._session_lock:
-            session = self._sessions.pop(session_id, None)
-        if not session:
-            return
-        try:
-            await session.copilot_session.destroy()
-        except Exception as exception:
-            LOGGER.error(
-                "Failed to destroy Copilot session: %s - %s",
-                type(exception).__name__,
-                str(exception),
-                exc_info=True,
-            )
-            msg = "Unable to clean up Copilot session."
-            raise GitHubCopilotApiClientError(msg) from exception
-
-    async def async_send_prompt(self, session_id: str, prompt: str) -> str:
-        """Send a prompt to an existing Copilot SDK session."""
-        if not prompt.strip():
-            msg = "Prompt cannot be empty. Please provide a message."
-            LOGGER.error(msg)
-            raise GitHubCopilotApiClientError(msg)
-
-        async with self._session_lock:
-            session = self._sessions.get(session_id)
-        if not session:
-            msg = f"Session '{session_id}' not found. The session may have expired."
-            LOGGER.error(msg)
-            raise GitHubCopilotApiClientError(msg)
-
-        try:
-            event = await session.copilot_session.send_and_wait({"prompt": prompt})
-        except TimeoutError as exception:
-            LOGGER.error(
-                "Copilot session %s timed out waiting for response: %s - %s",
-                session_id,
-                type(exception).__name__,
-                str(exception),
-                exc_info=True,
-            )
-            msg = (
-                "Request timed out waiting for Copilot response. "
-                "Please try again or check your connection."
-            )
-            raise GitHubCopilotApiClientCommunicationError(msg) from exception
-        except ConnectionError as exception:
-            LOGGER.error(
-                "Connection error in Copilot session %s: %s - %s",
-                session_id,
-                type(exception).__name__,
-                str(exception),
-                exc_info=True,
-            )
-            msg = "Lost connection to Copilot. Please check your network and try again."
-            raise GitHubCopilotApiClientCommunicationError(msg) from exception
-        except Exception as exception:
-            LOGGER.error(
-                "Copilot session %s error: %s - %s. Full details in traceback.",
-                session_id,
-                type(exception).__name__,
-                str(exception),
-                exc_info=True,
-            )
-            msg = f"Copilot failed to respond: {type(exception).__name__}: {exception}"
-            raise GitHubCopilotApiClientError(msg) from exception
-
-        if event is None:
-            msg = (
-                "No response received from Copilot. "
-                "The service may be experiencing issues."
-            )
-            LOGGER.error(msg)
-            raise GitHubCopilotApiClientError(msg)
-
-        content = getattr(event.data, "content", None)
-        if not content:
-            msg = (
-                "Copilot returned an empty response. "
-                "Please try rephrasing your request."
-            )
-            LOGGER.error(msg)
-            raise GitHubCopilotApiClientError(msg)
-        return content
-
-    async def async_close(self) -> None:
-        """Close the Copilot SDK client and sessions."""
-        async with self._session_lock:
-            session_ids = list(self._sessions.keys())
-        for session_id in session_ids:
-            with suppress(GitHubCopilotApiClientError):
-                await self.async_end_session(session_id)
-        async with self._client_lock:
-            if self._client:
-                await self._client.stop()
-                self._client = None
-
     def _check_cli_installed(self) -> CliInstallationStatus:
         """Check if GitHub Copilot CLI is installed and accessible."""
         status = CliInstallationStatus()
@@ -599,6 +439,166 @@ class GitHubCopilotApiClient:
             LOGGER.info("Successfully connected to GitHub Copilot CLI")
             self._client = client
             return client
+
+    async def async_create_session(self) -> CopilotSessionContext:
+        """Create a Copilot SDK session."""
+        async with self._session_lock:
+            client = await self._ensure_client()
+            try:
+                copilot_session = await client.create_session(
+                    {
+                        "model": self._model,
+                        "streaming": False,
+                    }
+                )
+            except TimeoutError as exception:
+                LOGGER.error(
+                    "Timeout creating Copilot session with model '%s': %s - %s",
+                    self._model,
+                    type(exception).__name__,
+                    str(exception),
+                    exc_info=True,
+                )
+                msg = (
+                    f"Timeout creating session with model '{self._model}'. "
+                    "The Copilot service may be slow or unavailable."
+                )
+                raise GitHubCopilotApiClientCommunicationError(msg) from exception
+            except ValueError as exception:
+                LOGGER.error(
+                    "Invalid configuration for Copilot session: %s - %s",
+                    type(exception).__name__,
+                    str(exception),
+                    exc_info=True,
+                )
+                msg = (
+                    f"Invalid session configuration for model '{self._model}': "
+                    f"{exception}"
+                )
+                raise GitHubCopilotApiClientError(msg) from exception
+            except Exception as exception:
+                LOGGER.error(
+                    "Failed to create Copilot session with model '%s': %s - %s. "
+                    "Full traceback available.",
+                    self._model,
+                    type(exception).__name__,
+                    str(exception),
+                    exc_info=True,
+                )
+                msg = (
+                    f"Unable to start Copilot session with model '{self._model}': "
+                    f"{type(exception).__name__}: {exception}"
+                )
+                raise GitHubCopilotApiClientError(msg) from exception
+            session_context = CopilotSessionContext(
+                session_id=copilot_session.session_id,
+                copilot_session=copilot_session,
+            )
+            self._sessions[session_context.session_id] = session_context
+            LOGGER.debug(
+                "Created Copilot session %s with model '%s'",
+                session_context.session_id,
+                self._model,
+            )
+            return session_context
+
+    async def async_end_session(self, session_id: str) -> None:
+        """Destroy a Copilot SDK session."""
+        async with self._session_lock:
+            session = self._sessions.pop(session_id, None)
+        if not session:
+            return
+        try:
+            await session.copilot_session.destroy()
+        except Exception as exception:
+            LOGGER.error(
+                "Failed to destroy Copilot session: %s - %s",
+                type(exception).__name__,
+                str(exception),
+                exc_info=True,
+            )
+            msg = "Unable to clean up Copilot session."
+            raise GitHubCopilotApiClientError(msg) from exception
+
+    async def async_send_prompt(self, session_id: str, prompt: str) -> str:
+        """Send a prompt to an existing Copilot SDK session."""
+        if not prompt.strip():
+            msg = "Prompt cannot be empty. Please provide a message."
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientError(msg)
+
+        async with self._session_lock:
+            session = self._sessions.get(session_id)
+        if not session:
+            msg = f"Session '{session_id}' not found. The session may have expired."
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientError(msg)
+
+        try:
+            event = await session.copilot_session.send_and_wait({"prompt": prompt})
+        except TimeoutError as exception:
+            LOGGER.error(
+                "Copilot session %s timed out waiting for response: %s - %s",
+                session_id,
+                type(exception).__name__,
+                str(exception),
+                exc_info=True,
+            )
+            msg = (
+                "Request timed out waiting for Copilot response. "
+                "Please try again or check your connection."
+            )
+            raise GitHubCopilotApiClientCommunicationError(msg) from exception
+        except ConnectionError as exception:
+            LOGGER.error(
+                "Connection error in Copilot session %s: %s - %s",
+                session_id,
+                type(exception).__name__,
+                str(exception),
+                exc_info=True,
+            )
+            msg = "Lost connection to Copilot. Please check your network and try again."
+            raise GitHubCopilotApiClientCommunicationError(msg) from exception
+        except Exception as exception:
+            LOGGER.error(
+                "Copilot session %s error: %s - %s. Full details in traceback.",
+                session_id,
+                type(exception).__name__,
+                str(exception),
+                exc_info=True,
+            )
+            msg = f"Copilot failed to respond: {type(exception).__name__}: {exception}"
+            raise GitHubCopilotApiClientError(msg) from exception
+
+        if event is None:
+            msg = (
+                "No response received from Copilot. "
+                "The service may be experiencing issues."
+            )
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientError(msg)
+
+        content = getattr(event.data, "content", None)
+        if not content:
+            msg = (
+                "Copilot returned an empty response. "
+                "Please try rephrasing your request."
+            )
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientError(msg)
+        return content
+
+    async def async_close(self) -> None:
+        """Close the Copilot SDK client and sessions."""
+        async with self._session_lock:
+            session_ids = list(self._sessions.keys())
+        for session_id in session_ids:
+            with suppress(GitHubCopilotApiClientError):
+                await self.async_end_session(session_id)
+        async with self._client_lock:
+            if self._client:
+                await self._client.stop()
+                self._client = None
 
     async def async_available_models(self) -> Sequence[str]:
         """Return available model IDs from the Copilot SDK."""

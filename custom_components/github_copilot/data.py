@@ -13,9 +13,6 @@ if TYPE_CHECKING:
     from .coordinator import GitHubCopilotDataUpdateCoordinator
 
 
-type GitHubCopilotConfigEntry = ConfigEntry[GitHubCopilotData]
-
-
 @dataclass
 class GitHubCopilotData:
     """Data for the GitHub Copilot integration."""
@@ -23,3 +20,6 @@ class GitHubCopilotData:
     client: GitHubCopilotApiClient
     coordinator: GitHubCopilotDataUpdateCoordinator
     integration: Integration
+
+
+type GitHubCopilotConfigEntry = ConfigEntry[GitHubCopilotData]
