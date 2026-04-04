@@ -5,6 +5,10 @@ All notable changes to the GitHub Copilot Bridge add-on will be documented in th
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- No add-on changes yet.
+
 ## [v3.8.3] - 2026-04-01
 
 ### Changed
@@ -76,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The bridge add-on is designed to work seamlessly with the GitHub Copilot Home Assistant integration:
 
-- **v3.8.3 (current)**: Compatible with integration v1.0.5 using github-copilot-sdk 0.1.32. On Home Assistant OS (glibc < 2.28) install the universal-wheel build manually: `pip install 'github-copilot-sdk==0.1.22'`
+- **v3.8.3 (current)**: Compatible with integration v1.0.6 using github-copilot-sdk 0.1.32. On Home Assistant OS (glibc < 2.28) install the universal-wheel build manually: `pip install 'github-copilot-sdk==0.1.22'`
 - **v3.7.5 - v3.6.0**: Compatible with integration v1.0.4 using github-copilot-sdk 0.1.22
 - **Earlier versions**: Compatible with older integration versions
 

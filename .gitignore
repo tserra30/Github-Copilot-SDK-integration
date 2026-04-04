@@ -23,3 +23,7 @@ BUG_REPORT.md
 BUGS_FIXED.md
 CYCLE_1_FINAL_REPORT.md
 TESTING_CYCLE_1.md
+
+# Keep patched SDK wheels (built in CI)
+!wheels/
+!wheels/*.whl
