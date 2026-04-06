@@ -43,7 +43,7 @@ This wheel **is** installed automatically by Home Assistant from the integration
 
 ```json
 "requirements": [
-  "github-copilot-sdk @ https://github.com/tserra30/Github-Copilot-SDK-integration/raw/main/wheels/github_copilot_sdk-0.1.22+ha-py3-none-any.whl"
+  "https://github.com/tserra30/Github-Copilot-SDK-integration/raw/main/wheels/github_copilot_sdk-0.1.22+ha-py3-none-any.whl"
 ]
 ```
 
