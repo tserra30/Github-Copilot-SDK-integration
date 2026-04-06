@@ -55,42 +55,40 @@ jobs:
 
           # Patch 2: Make protocol check accept both v2 and v3
           # Change strict equality to range check
-          cat > /tmp/protocol_patch.py << 'EOF'
-import sys
+          python3 -c '
+          import sys
 
-# Read the client.py file
-with open('copilot/client.py', 'r') as f:
-    content = f.read()
+          # Read the client.py file
+          with open("copilot/client.py", "r") as f:
+              content = f.read()
 
-old_check = '''        if server_version != expected_version:
-            raise RuntimeError(
-                f"SDK protocol version mismatch: SDK expects version {expected_version}, "
-                f"but server reports version {server_version}. "
-                f"Please update your SDK or server to ensure compatibility."
-            )'''
+          old_check = """        if server_version != expected_version:
+                      raise RuntimeError(
+                          f"SDK protocol version mismatch: SDK expects version {expected_version}, "
+                          f"but server reports version {server_version}. "
+                          f"Please update your SDK or server to ensure compatibility."
+                      )"""
 
-new_check = '''        # Accept protocol v2 and v3 (backward compatible)
-        if server_version not in [2, 3]:
-            raise RuntimeError(
-                f"SDK protocol version mismatch: SDK supports versions 2 and 3, "
-                f"but server reports version {server_version}. "
-                f"Please update your SDK or server to ensure compatibility."
-            )'''
+          new_check = """        # Accept protocol v2 and v3 (backward compatible)
+                  if server_version not in [2, 3]:
+                      raise RuntimeError(
+                          f"SDK protocol version mismatch: SDK supports versions 2 and 3, "
+                          f"but server reports version {server_version}. "
+                          f"Please update your SDK or server to ensure compatibility."
+                      )"""
 
-if old_check not in content:
-    print("ERROR: old protocol check pattern not found in client.py - patch cannot be applied")
-    sys.exit(1)
+          if old_check not in content:
+              print("ERROR: old protocol check pattern not found in client.py - patch cannot be applied")
+              sys.exit(1)
 
-content = content.replace(old_check, new_check)
+          content = content.replace(old_check, new_check)
 
-# Write back
-with open('copilot/client.py', 'w') as f:
-    f.write(content)
+          # Write back
+          with open("copilot/client.py", "w") as f:
+              f.write(content)
 
-print("Patch 2 applied: protocol check updated")
-EOF
-
-          python /tmp/protocol_patch.py
+          print("Patch 2 applied: protocol check updated")
+          '
 
           # Verify Patch 2 applied
           if ! grep -q "server_version not in \[2, 3\]" copilot/client.py; then
@@ -145,14 +143,13 @@ EOF
           if git diff --cached --quiet; then
             echo "No changes to commit - wheel is up to date"
           else
-            git commit -m "Update patched github-copilot-sdk wheel with protocol v3 support
-
-Built from SDK 0.1.22 source with patches:
-- Update SDK_PROTOCOL_VERSION to 3
-- Accept both protocol v2 and v3 for backward compatibility
-- Universal py3-none-any wheel compatible with Home Assistant OS
-
-Wheel: github_copilot_sdk-0.1.22+ha-py3-none-any.whl"
+            git commit \
+              -m "Update patched github-copilot-sdk wheel with protocol v3 support" \
+              -m "Built from SDK 0.1.22 source with patches:" \
+              -m "- Update SDK_PROTOCOL_VERSION to 3" \
+              -m "- Accept both protocol v2 and v3 for backward compatibility" \
+              -m "- Universal py3-none-any wheel compatible with Home Assistant OS" \
+              -m "Wheel: github_copilot_sdk-0.1.22+ha-py3-none-any.whl"
 
             echo "Wheel committed to repository"
 
