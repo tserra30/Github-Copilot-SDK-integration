@@ -115,35 +115,48 @@ EOF
           python -m build --wheel
           ls -lh dist/
 
-          # Copy wheel to repository
+          # Remove old wheels from repository to avoid conflicts
+          rm -f $GITHUB_WORKSPACE/wheels/*.whl
+
+          # Copy new wheel to repository
           mkdir -p $GITHUB_WORKSPACE/wheels
           cp dist/*.whl $GITHUB_WORKSPACE/wheels/
 
           echo "Built wheel:"
           ls -lh $GITHUB_WORKSPACE/wheels/
 
-      - name: Create wheels directory in repository
+          # Verify wheel filename and version
+          wheel_file=$(ls $GITHUB_WORKSPACE/wheels/*.whl)
+          if [[ ! "$wheel_file" =~ github_copilot_sdk-0\.1\.22\+ha-py3-none-any\.whl$ ]]; then
+            echo "ERROR: Expected wheel filename to match 'github_copilot_sdk-0.1.22+ha-py3-none-any.whl' but got: $(basename $wheel_file)"
+            exit 1
+          fi
+          echo "Wheel filename verified: $(basename $wheel_file)"
+
+      - name: Commit and push wheel
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Add wheels directory if it doesn't exist in .gitignore
-          if ! grep -q "^wheels/$" .gitignore 2>/dev/null; then
-            echo "" >> .gitignore
-            echo "# Keep built SDK wheels" >> .gitignore
-            echo "!wheels/*.whl" >> .gitignore
-          fi
+          # Add wheels directory (already tracked, just update it)
+          git add wheels/
 
-          git add wheels/ .gitignore
-          git diff --cached --quiet || git commit -m "Add patched github-copilot-sdk wheel with protocol v3 support
+          # Check if there are changes to commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit - wheel is up to date"
+          else
+            git commit -m "Update patched github-copilot-sdk wheel with protocol v3 support
 
 Built from SDK 0.1.22 source with patches:
 - Update SDK_PROTOCOL_VERSION to 3
 - Accept both protocol v2 and v3 for backward compatibility
-- Universal py3-none-any wheel compatible with Home Assistant OS"
+- Universal py3-none-any wheel compatible with Home Assistant OS
 
-          echo "Wheel committed to repository"
+Wheel: github_copilot_sdk-0.1.22+ha-py3-none-any.whl"
 
-      - name: Push changes
-        run: |
-          git push origin HEAD:${GITHUB_REF#refs/heads/} || echo "No changes to push"
+            echo "Wheel committed to repository"
+
+            # Push changes to the branch that triggered the workflow
+            git push origin HEAD:refs/heads/${{ github.ref_name }}
+            echo "Changes pushed successfully"
+          fi
