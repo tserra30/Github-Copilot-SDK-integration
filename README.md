@@ -157,7 +157,7 @@ This integration uses a **patched version** of `github-copilot-sdk` (version `0.
 **Wheel Details:**
 - **Source**: Built from SDK 0.1.22 with protocol v3 patches (see `wheels/README.md`)
 - **Build Process**: Automated via `.github/workflows/build-sdk.yml`
-- **Installation**: Automatic from `manifest.json` requirement
+- **Installation**: Automatic from `manifest.json` requirement using a pinned, immutable wheel URL (commit `fd973cc65828d677d69e8f2406a69aa140858cd8`) with sha256 verification; if you install it manually, use the same pinned URL rather than a mutable `raw/main/...` URL so installs remain reproducible
 
 The SDK is required in **both** modes (bridge add-on and local CLI) as it is the Python client library used by the integration.
 
