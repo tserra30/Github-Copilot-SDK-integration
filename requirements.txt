@@ -1,5 +1,5 @@
 colorlog==6.10.1
-github-copilot-sdk==0.1.32
+https://github.com/tserra30/Github-Copilot-SDK-integration/raw/main/wheels/github_copilot_sdk-0.1.22+ha-py3-none-any.whl
 # Pin to a released Home Assistant version so CI dependency installs succeed
 homeassistant==2024.12.3
 pip>=21.3.1

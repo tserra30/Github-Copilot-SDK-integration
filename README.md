@@ -141,20 +141,24 @@ For detailed setup and usage guidance, use this README. For contributing and dev
 
 ### SDK Installation
 
-This integration uses `github-copilot-sdk==0.1.32` from PyPI. On most Linux systems (glibc ≥ 2.28) and Docker-based Home Assistant installations, this is installed automatically.
+This integration uses a **patched version** of `github-copilot-sdk` (version `0.1.22+ha`) that is automatically installed from this repository's `wheels/` directory. This patched wheel:
 
-**Home Assistant OS / older glibc (< 2.28):**
-- `github-copilot-sdk==0.1.32` only ships `manylinux_2_28` wheels that require glibc ≥ 2.28
-- Home Assistant OS has older glibc and **cannot** install `0.1.32` via the normal mechanism
-- To resolve this, use the Bridge add-on (which manages its own CLI and handles protocol v3) and manually install a compatible patched wheel:
-  ```bash
-  pip install 'github-copilot-sdk==0.1.22'
-  ```
-  > **Important notes:**
-  > - Version 0.1.22 is the last release with universal `py3-none-any` wheels.
-  > - Stock 0.1.22 only supports protocol v2; the Bridge add-on (CLI v1.0.13) uses protocol v3.
-  > - Do **not** assume stock 0.1.22 is protocol v3 compatible; use it only as a last resort.
-  > - A patched wheel with protocol v3 support can be built using the `.github/workflows/build-sdk.yml` workflow.
+- ✅ Is a universal `py3-none-any` wheel compatible with **all platforms** including Home Assistant OS
+- ✅ Supports **protocol v3** (required for Copilot CLI v1.0.13)
+- ✅ Maintains **backward compatibility** with protocol v2
+- ✅ Works on systems with **any glibc version** (no manylinux requirements)
+
+**Why a patched wheel?**
+- Official SDK versions 0.1.23+ only ship `manylinux_2_28` wheels requiring glibc ≥ 2.28
+- Home Assistant OS has glibc < 2.28 and cannot install these wheels
+- SDK 0.1.22 (last version with universal wheels) only supports protocol v2
+- Our patched `0.1.22+ha` combines the best of both: universal wheels + protocol v3 support
+
+**Wheel Details:**
+- **Source**: Built from SDK 0.1.22 with protocol v3 patches (see `wheels/README.md`)
+- **Build Process**: Automated via `.github/workflows/build-sdk.yml`
+- **Installation**: Automatic from `manifest.json` using a pinned, immutable commit SHA URL with sha256 verification
+- **Reproducibility**: The URL is pinned to commit `fd973cc65828d677d69e8f2406a69aa140858cd8` — use the same pinned URL for any manual installs rather than a mutable `raw/main/...` URL
 
 The SDK is required in **both** modes (bridge add-on and local CLI) as it is the Python client library used by the integration.
 

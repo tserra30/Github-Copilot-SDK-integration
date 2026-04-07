@@ -97,18 +97,27 @@ addon/                    # GitHub Copilot Bridge Add-on
 
 ## Recent Important Changes (March-April 2026)
 
-### SDK Version and HA OS Compatibility (Current PR)
-- **Integration**: Uses github-copilot-sdk==0.1.32 from PyPI (standard installation)
-- **HA OS limitation**: SDK 0.1.23+ only ship manylinux_2_28 wheels requiring glibc ≥ 2.28; Home Assistant OS cannot install these
-- **Workaround for HA OS**: Manually install `github-copilot-sdk==0.1.22` (last version with universal py3-none-any wheels)
-- **Protocol note**: Stock SDK 0.1.22 supports protocol v2 only; CLI v1.0.13 uses protocol v3. Do **not** assume stock 0.1.22 auto-negotiates v3.
-- **Patched wheel**: A patched 0.1.22 wheel with protocol v3 support can be built via `.github/workflows/build-sdk.yml`
+### SDK Installation Fix (Current)
+- **Integration**: Now uses patched `github-copilot-sdk==0.1.22+ha` wheel from repository
+- **Fixes**: Home Assistant OS installation failure due to manylinux_2_28 wheel incompatibility
+- **Installation**: Automatic via URL requirement in `manifest.json` pointing to `wheels/github_copilot_sdk-0.1.22+ha-py3-none-any.whl`
+- **Benefits**:
+  - Universal `py3-none-any` wheel works on all platforms including HA OS
+  - Protocol v3 support (patched from 0.1.22 source)
+  - No manual installation required
+  - No glibc version constraints
+
+### SDK Version and HA OS Compatibility
+- **Problem**: SDK 0.1.23+ only ship manylinux_2_28 wheels requiring glibc ≥ 2.28; Home Assistant OS cannot install these
+- **Solution**: Integration now uses patched 0.1.22+ha wheel with protocol v3 support from repository
+- **Build Process**: `.github/workflows/build-sdk.yml` automatically builds patched wheel
+- **Stock SDK 0.1.22**: Supports protocol v2 only; do **not** use stock 0.1.22 with CLI v1.0.13
 
 ### Protocol v3 Support (PR #105)
-- **Integration**: Updated github-copilot-sdk from 0.1.22 to 0.1.32
+- **Integration**: SDK updated to support protocol v3
 - **Add-on**: Updated Copilot CLI from v1.0.9 to v1.0.13
-- **Impact**: SDK 0.1.32 natively supports protocol v3; CLI v1.0.13 uses protocol v3
-- **Backward compatibility**: Both SDK and CLI support protocol v2
+- **Impact**: CLI v1.0.13 uses protocol v3
+- **Backward compatibility**: Patched SDK supports both protocol v2 and v3
 
 ### CLI URL and Token Mutual Exclusion (PR #103)
 - **Bug fixed**: SDK raised ValueError when both `github_token` and `cli_url` were provided
@@ -129,9 +138,9 @@ addon/                    # GitHub Copilot Bridge Add-on
 - **Result**: Improved stability and native binary support
 
 ### Home Assistant OS Compatibility (PR #82, #98)
-- github-copilot-sdk 0.1.22 is last version with universal py3-none-any wheels
-- Versions 0.1.23+ use manylinux wheels not recognized by HA OS pip
-- Bridge add-on is the recommended solution for HA OS users
+- Integration now uses patched SDK 0.1.22+ha wheel from repository (universal, protocol v3)
+- Auto-installed from `manifest.json` URL requirement
+- Bridge add-on is still recommended for HA OS users (eliminates need for local CLI binary)
 
 ## Development Workflow
 

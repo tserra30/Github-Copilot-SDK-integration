@@ -39,13 +39,20 @@ The wheel is built using GitHub Actions workflow `.github/workflows/build-sdk.ym
 
 ## Installation
 
-This wheel is **not** installed automatically by Home Assistant from the integration's `requirements`.
-The integration installs `github-copilot-sdk==0.1.32` from PyPI on supported platforms.
+This wheel **is** installed automatically by Home Assistant from the integration's `manifest.json` requirements:
 
-This patched wheel is intended for **Home Assistant OS users** (glibc < 2.28) who cannot install SDK 0.1.32. To install manually:
+```json
+"requirements": [
+  "https://github.com/tserra30/Github-Copilot-SDK-integration/raw/fd973cc65828d677d69e8f2406a69aa140858cd8/wheels/github_copilot_sdk-0.1.22+ha-py3-none-any.whl#sha256=d2aad92a793bdd6d4a8b3ffee9b34255cadb8348be35c984f00cc6d2a5a3230f"
+]
+```
+
+Home Assistant will download and install the wheel directly from the repository when the integration loads. The URL is pinned to an immutable commit SHA (`fd973cc65828d677d69e8f2406a69aa140858cd8`) with sha256 verification for reproducible, tamper-evident installs.
+
+**Manual Installation (not normally needed):**
 
 ```bash
-pip install wheels/github_copilot_sdk-0.1.22+ha-py3-none-any.whl
+pip install "https://github.com/tserra30/Github-Copilot-SDK-integration/raw/fd973cc65828d677d69e8f2406a69aa140858cd8/wheels/github_copilot_sdk-0.1.22+ha-py3-none-any.whl#sha256=d2aad92a793bdd6d4a8b3ffee9b34255cadb8348be35c984f00cc6d2a5a3230f"
 ```
 
 ## Verification
