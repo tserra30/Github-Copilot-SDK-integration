@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import shutil
+import socket
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -550,6 +551,41 @@ class GitHubCopilotApiClient:
                 msg = (
                     "Connection refused by GitHub Copilot CLI. "
                     "The CLI server may not be running or is misconfigured."
+                )
+                raise GitHubCopilotApiClientCommunicationError(msg) from exception
+            except RuntimeError as exception:
+                # The SDK wraps socket.gaierror (DNS failure) in RuntimeError.
+                # Detect this case and surface an actionable message.
+                cause = exception.__cause__ or exception.__context__
+                dns_errnos = {
+                    getattr(socket, "EAI_NONAME", -2),  # Name or service not known
+                    getattr(socket, "EAI_AGAIN", -3),  # Temporary DNS failure
+                    getattr(socket, "EAI_NODATA", -5),  # No address for hostname
+                }
+                if isinstance(cause, OSError) and cause.errno in dns_errnos:
+                    cli_url = self._client_options.get("cli_url", "")
+                    location = f" '{cli_url}'" if cli_url else ""
+                    LOGGER.error(
+                        "DNS resolution failed for Copilot CLI server%s: %s",
+                        location,
+                        str(exception),
+                    )
+                    msg = (
+                        f"Cannot resolve the Copilot CLI server hostname{location}. "
+                        "Please verify the bridge add-on is installed and running, "
+                        "and that the CLI URL in the integration settings is correct."
+                    )
+                    raise GitHubCopilotApiClientCommunicationError(msg) from exception
+                LOGGER.error(
+                    "Failed to start Copilot SDK client: %s - %s. "
+                    "Full traceback available in logs.",
+                    type(exception).__name__,
+                    str(exception),
+                    exc_info=True,
+                )
+                exc_name = type(exception).__name__
+                msg = (
+                    f"Unable to connect to GitHub Copilot CLI: {exc_name}: {exception}"
                 )
                 raise GitHubCopilotApiClientCommunicationError(msg) from exception
             except Exception as exception:
