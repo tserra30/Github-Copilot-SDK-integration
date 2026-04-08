@@ -10,6 +10,7 @@ from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -573,15 +574,17 @@ class GitHubCopilotApiClient:
                 if isinstance(cause, OSError) and cause_errno in dns_errnos:
                     cli_url = self._client_options.get("cli_url", "")
                     # Extract only host[:port] to avoid logging credentials or paths
+                    netloc = ""
                     try:
-                        from urllib.parse import urlparse  # noqa: PLC0415
-
                         parsed = urlparse(cli_url)
-                        netloc = parsed.hostname or ""
-                        if parsed.port:
-                            netloc = f"{netloc}:{parsed.port}"
-                    except Exception:  # noqa: BLE001
-                        netloc = ""
+                        if parsed.hostname:
+                            netloc = (
+                                f"{parsed.hostname}:{parsed.port}"
+                                if parsed.port
+                                else parsed.hostname
+                            )
+                    except ValueError:
+                        pass
                     location = f" '{netloc}'" if netloc else ""
                     LOGGER.error(
                         "DNS resolution failed for Copilot CLI server%s: %s",
