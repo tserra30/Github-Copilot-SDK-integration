@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 import os
 import shutil
+import socket
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -550,6 +552,62 @@ class GitHubCopilotApiClient:
                 msg = (
                     "Connection refused by GitHub Copilot CLI. "
                     "The CLI server may not be running or is misconfigured."
+                )
+                raise GitHubCopilotApiClientCommunicationError(msg) from exception
+            except RuntimeError as exception:
+                # The SDK wraps socket.gaierror (DNS failure) in RuntimeError.
+                # Detect this case and surface an actionable message.
+                cause = exception.__cause__ or exception.__context__
+                dns_errnos = {
+                    getattr(socket, "EAI_NONAME", -2),  # Name or service not known
+                    getattr(socket, "EAI_AGAIN", -3),  # Temporary DNS failure
+                    getattr(socket, "EAI_NODATA", -5),  # No address for hostname
+                }
+                # gaierror may store the code in .errno or args[0]
+                cause_errno = (
+                    getattr(cause, "errno", None)
+                    if isinstance(cause, OSError)
+                    else None
+                )
+                if cause_errno is None and isinstance(cause, OSError) and cause.args:
+                    cause_errno = cause.args[0]
+                if isinstance(cause, OSError) and cause_errno in dns_errnos:
+                    cli_url = self._client_options.get("cli_url", "")
+                    # Extract only host[:port] to avoid logging credentials or paths
+                    netloc = ""
+                    try:
+                        parsed = urlparse(cli_url)
+                        if parsed.hostname:
+                            netloc = (
+                                f"{parsed.hostname}:{parsed.port}"
+                                if parsed.port
+                                else parsed.hostname
+                            )
+                    except ValueError:
+                        pass
+                    location = f" '{netloc}'" if netloc else ""
+                    LOGGER.error(
+                        "DNS resolution failed for Copilot CLI server%s: %s",
+                        location,
+                        str(cause),
+                        exc_info=cause,
+                    )
+                    msg = (
+                        f"Cannot resolve the Copilot CLI server{location}. "
+                        "Please verify the bridge add-on is installed and running, "
+                        "and that the CLI URL in the integration settings is correct."
+                    )
+                    raise GitHubCopilotApiClientCommunicationError(msg) from exception
+                exc_name = type(exception).__name__
+                LOGGER.error(
+                    "Failed to start Copilot SDK client: %s - %s. "
+                    "Full traceback available in logs.",
+                    exc_name,
+                    str(exception),
+                    exc_info=True,
+                )
+                msg = (
+                    f"Unable to connect to GitHub Copilot CLI: {exc_name}: {exception}"
                 )
                 raise GitHubCopilotApiClientCommunicationError(msg) from exception
             except Exception as exception:
