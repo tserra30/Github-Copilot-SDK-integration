@@ -572,14 +572,25 @@ class GitHubCopilotApiClient:
                     cause_errno = cause.args[0]
                 if isinstance(cause, OSError) and cause_errno in dns_errnos:
                     cli_url = self._client_options.get("cli_url", "")
-                    location = f" '{cli_url}'" if cli_url else ""
+                    # Extract only host[:port] to avoid logging credentials or paths
+                    try:
+                        from urllib.parse import urlparse  # noqa: PLC0415
+
+                        parsed = urlparse(cli_url)
+                        netloc = parsed.hostname or ""
+                        if parsed.port:
+                            netloc = f"{netloc}:{parsed.port}"
+                    except Exception:  # noqa: BLE001
+                        netloc = ""
+                    location = f" '{netloc}'" if netloc else ""
                     LOGGER.error(
                         "DNS resolution failed for Copilot CLI server%s: %s",
                         location,
-                        str(exception),
+                        str(cause),
+                        exc_info=cause,
                     )
                     msg = (
-                        f"Cannot resolve the Copilot CLI server hostname{location}. "
+                        f"Cannot resolve the Copilot CLI server{location}. "
                         "Please verify the bridge add-on is installed and running, "
                         "and that the CLI URL in the integration settings is correct."
                     )
