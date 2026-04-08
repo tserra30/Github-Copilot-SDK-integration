@@ -562,7 +562,15 @@ class GitHubCopilotApiClient:
                     getattr(socket, "EAI_AGAIN", -3),  # Temporary DNS failure
                     getattr(socket, "EAI_NODATA", -5),  # No address for hostname
                 }
-                if isinstance(cause, OSError) and cause.errno in dns_errnos:
+                # gaierror may store the code in .errno or args[0]
+                cause_errno = (
+                    getattr(cause, "errno", None)
+                    if isinstance(cause, OSError)
+                    else None
+                )
+                if cause_errno is None and isinstance(cause, OSError) and cause.args:
+                    cause_errno = cause.args[0]
+                if isinstance(cause, OSError) and cause_errno in dns_errnos:
                     cli_url = self._client_options.get("cli_url", "")
                     location = f" '{cli_url}'" if cli_url else ""
                     LOGGER.error(
@@ -576,14 +584,14 @@ class GitHubCopilotApiClient:
                         "and that the CLI URL in the integration settings is correct."
                     )
                     raise GitHubCopilotApiClientCommunicationError(msg) from exception
+                exc_name = type(exception).__name__
                 LOGGER.error(
                     "Failed to start Copilot SDK client: %s - %s. "
                     "Full traceback available in logs.",
-                    type(exception).__name__,
+                    exc_name,
                     str(exception),
                     exc_info=True,
                 )
-                exc_name = type(exception).__name__
                 msg = (
                     f"Unable to connect to GitHub Copilot CLI: {exc_name}: {exception}"
                 )
