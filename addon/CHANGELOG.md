@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No add-on changes yet.
 
+## [v3.9.4] - 2026-04-10
+
+### Added
+- **Add icon and logo images** to add-on directory so the add-on displays its icon and logo in Home Assistant
+
 ## [v3.8.3] - 2026-04-01
 
 ### Changed
