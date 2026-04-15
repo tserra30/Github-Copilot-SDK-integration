@@ -22,11 +22,16 @@ SUPPORTED_MODELS = [
     "gpt-4o-mini",
     "gpt-4",
     "gpt-4-turbo",
+    "gpt-4.1",
     "gpt-3.5-turbo",
+    "gpt-5",
     "o3-mini",
     "o1",
     "o1-mini",
     "claude-3-5-sonnet",
+    "claude-sonnet-4.5",
+    "claude-haiku-4.5",
+    "claude-opus-4.6",
 ]
 
 # Map of legacy model IDs (stored in old config entries) to current model IDs.

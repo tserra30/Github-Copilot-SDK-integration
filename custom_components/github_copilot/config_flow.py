@@ -255,6 +255,24 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
         # Get current CLI URL from config entry
         current_cli_url = self.config_entry.data.get(CONF_CLI_URL, DEFAULT_CLI_URL)
 
+        # Try to fetch the available models dynamically; fall back to the
+        # hardcoded list if the API call fails or runtime_data is unavailable.
+        available_models = SUPPORTED_MODELS
+        try:
+            available_models = list(
+                await self.config_entry.runtime_data.client.async_available_models()
+            )
+        except (GitHubCopilotApiClientError, AttributeError):
+            LOGGER.debug(
+                "Could not fetch dynamic model list; using built-in fallback.",
+                exc_info=True,
+            )
+
+        # Ensure the currently selected model is always present in the list so
+        # the dropdown does not show a blank/invalid selection.
+        if current_model not in available_models:
+            available_models = [current_model, *available_models]
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
@@ -264,7 +282,7 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
                         default=current_model,
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
-                            options=SUPPORTED_MODELS,
+                            options=available_models,
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         ),
                     ),
