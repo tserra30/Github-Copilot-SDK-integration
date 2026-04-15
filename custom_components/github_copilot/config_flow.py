@@ -262,8 +262,11 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
             available_models = list(
                 await self.config_entry.runtime_data.client.async_available_models()
             )
-        except Exception:  # noqa: BLE001
-            LOGGER.debug("Could not fetch dynamic model list; using built-in fallback.")
+        except (GitHubCopilotApiClientError, AttributeError):
+            LOGGER.debug(
+                "Could not fetch dynamic model list; using built-in fallback.",
+                exc_info=True,
+            )
 
         # Ensure the currently selected model is always present in the list so
         # the dropdown does not show a blank/invalid selection.
