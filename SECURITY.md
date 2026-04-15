@@ -2,4 +2,4 @@
 
 ## Reporting a Vulnerability
 
-vulnerabilities can be addressed via an issue pr or by email.
+Vulnerabilities can be addressed via the security tab.
