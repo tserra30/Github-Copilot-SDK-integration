@@ -482,7 +482,8 @@
             <p>The integration connects to the add-on via its internal hostname (shown in the add-on <strong>Info</strong> tab). The URL format is:</p>
             <pre><code>http://&lt;hostname&gt;:8000
 # Example:
-http://a1b2c3d4_github_copilot_bridge:8000</code></pre>
+http://a1b2c3d4-github-copilot-bridge:8000</code></pre>
+            <p><strong>Note:</strong> Home Assistant generates the hostname from the add-on slug by replacing all underscores (<code>_</code>) with hyphens (<code>-</code>). Always use hyphens — using underscores will cause DNS resolution to fail.</p>
         </section>
 
         <!-- ── Configuration ── -->
@@ -495,7 +496,7 @@ http://a1b2c3d4_github_copilot_bridge:8000</code></pre>
                     <ul>
                         <li><strong>GitHub Token</strong> — Personal access token with Copilot permissions. Optional when using the Bridge add-on (the add-on manages its own authentication).</li>
                         <li><strong>Model</strong> — The AI model to use (default: <code>GPT-4o</code>).</li>
-                        <li><strong>Copilot CLI URL</strong> *(optional)* — URL of the Bridge add-on, e.g. <code>http://a1b2c3d4_github_copilot_bridge:8000</code>. Leave empty to use a locally installed Copilot CLI.</li>
+                        <li><strong>Copilot CLI URL</strong> *(optional)* — URL of the Bridge add-on, e.g. <code>http://a1b2c3d4-github-copilot-bridge:8000</code>. Leave empty to use a locally installed Copilot CLI.</li>
                     </ul>
                 </li>
             </ol>

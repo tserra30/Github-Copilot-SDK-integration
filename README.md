@@ -77,7 +77,9 @@ The integration needs to know the URL of the running add-on. Within Home Assista
 http://<hostname>:8000
 ```
 
-For example: `http://a1b2c3d4_github_copilot_bridge:8000`
+For example: `http://a1b2c3d4-github-copilot-bridge:8000`
+
+> **Note**: Home Assistant generates the hostname from the add-on slug by replacing all underscores (`_`) with hyphens (`-`). Always use hyphens in the hostname — using the raw slug with underscores will cause DNS resolution to fail.
 
 ## Configuration
 
@@ -89,7 +91,7 @@ For example: `http://a1b2c3d4_github_copilot_bridge:8000`
 4. Fill in the configuration:
    - **GitHub Token** – Your GitHub personal access token with Copilot permissions (optional when using Bridge add-on)
    - **Model** – Select from GPT-4o (default), GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, or Claude 3.5 Sonnet
-   - **Copilot CLI URL (add-on)** *(optional)* – URL of the GitHub Copilot Bridge add-on (e.g. `http://a1b2c3d4_github_copilot_bridge:8000`). Leave empty to use a locally installed Copilot CLI.
+   - **Copilot CLI URL (add-on)** *(optional)* – URL of the GitHub Copilot Bridge add-on (e.g. `http://a1b2c3d4-github-copilot-bridge:8000`). Leave empty to use a locally installed Copilot CLI.
 
 > **Tip for Home Assistant OS users**: Install the GitHub Copilot Bridge add-on (see above) and enter its URL in the "Copilot CLI URL" field. This is the easiest way to get the integration working without manually installing the CLI in the Core container.
 
@@ -172,7 +174,7 @@ This error means the GitHub Copilot CLI is not reachable. There are two ways to 
 
 1. Install the add-on as described in the [GitHub Copilot Bridge Add-on](#github-copilot-bridge-add-on-recommended-for-home-assistant-os) section
 2. Make sure the add-on is running and the Log tab shows no errors
-3. Enter the add-on URL (e.g. `http://a1b2c3d4_github_copilot_bridge:8000`) in the **Copilot CLI URL** field during integration setup
+3. Enter the add-on URL (e.g. `http://a1b2c3d4-github-copilot-bridge:8000`) in the **Copilot CLI URL** field during integration setup
 
 **Option B – Install the CLI locally inside the Core container**
 
