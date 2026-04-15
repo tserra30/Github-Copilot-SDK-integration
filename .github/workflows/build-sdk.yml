@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   build-sdk:
@@ -143,6 +144,8 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit - wheel is up to date"
           else
+            BRANCH="bot/update-sdk-wheel-$(date +%Y%m%d%H%M%S)"
+            git checkout -b "$BRANCH"
             git commit \
               -m "Update patched github-copilot-sdk wheel with protocol v3 support" \
               -m "Built from SDK 0.1.22 source with patches:" \
@@ -153,7 +156,17 @@ jobs:
 
             echo "Wheel committed to repository"
 
-            # Push changes to the branch that triggered the workflow
-            git push origin HEAD:refs/heads/${{ github.ref_name }}
-            echo "Changes pushed successfully"
+            git push origin "HEAD:refs/heads/$BRANCH"
+            echo "Changes pushed to branch $BRANCH"
+
+            printf 'Automated PR: rebuilt patched SDK wheel from 0.1.22 source with protocol v3 support.\n\nChanges:\n- Update SDK_PROTOCOL_VERSION to 3\n- Accept both protocol v2 and v3 for backward compatibility\n- Universal py3-none-any wheel compatible with Home Assistant OS\n' > /tmp/pr_body.md
+
+            gh pr create \
+              --title "Update patched github-copilot-sdk wheel with protocol v3 support" \
+              --body-file /tmp/pr_body.md \
+              --base main \
+              --head "$BRANCH"
+            echo "Pull request created"
           fi
+        env:
+          GH_TOKEN: ${{ github.token }}
