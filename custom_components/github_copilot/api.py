@@ -33,6 +33,9 @@ _SDK_INSTALL_HINT = (
     "pip install 'github-copilot-sdk==0.1.22'"
 )
 
+# Timeout (seconds) for best-effort session destroy() calls made during error cleanup.
+_SESSION_DESTROY_TIMEOUT = 5.0
+
 
 class GitHubCopilotApiClientError(Exception):
     """Exception to indicate a general API error."""
@@ -214,6 +217,36 @@ class GitHubCopilotApiClient:
             msg = "Unable to clean up Copilot session."
             raise GitHubCopilotApiClientError(msg) from exception
 
+    async def _evict_broken_session(self, session_id: str) -> None:
+        """
+        Remove a broken session from the registry and attempt best-effort cleanup.
+
+        Called after a communication failure when the underlying SDK session
+        may be in an indeterminate state. The session is popped under the lock
+        to prevent reuse, then a short-timeout destroy() is attempted outside
+        the lock as a best-effort resource cleanup. Any destroy() failures are
+        logged and suppressed so they never surface to the caller.
+        """
+        async with self._session_lock:
+            session = self._sessions.pop(session_id, None)
+
+        if session is None:
+            return
+
+        try:
+            await asyncio.wait_for(
+                session.copilot_session.destroy(),
+                timeout=_SESSION_DESTROY_TIMEOUT,
+            )
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.warning(
+                "Best-effort destroy of broken session %s failed (%s: %s); "
+                "session has already been evicted from the registry.",
+                session_id,
+                type(exc).__name__,
+                exc,
+            )
+
     async def async_send_prompt(self, session_id: str, prompt: str) -> str:
         """Send a prompt to an existing Copilot SDK session."""
         if not prompt.strip():
@@ -238,6 +271,8 @@ class GitHubCopilotApiClient:
                 str(exception),
                 exc_info=True,
             )
+            # Remove the stale session so it cannot be reused in a broken state.
+            await self._evict_broken_session(session_id)
             msg = (
                 "Request timed out waiting for Copilot response. "
                 "Please try again or check your connection."
@@ -251,6 +286,8 @@ class GitHubCopilotApiClient:
                 str(exception),
                 exc_info=True,
             )
+            # Remove the broken session so it cannot be reused.
+            await self._evict_broken_session(session_id)
             msg = "Lost connection to Copilot. Please check your network and try again."
             raise GitHubCopilotApiClientCommunicationError(msg) from exception
         except Exception as exception:
