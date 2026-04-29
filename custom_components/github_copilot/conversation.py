@@ -139,6 +139,25 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
             conversation_id=conversation_id,
         )
 
+    async def _end_session_safe(
+        self,
+        client: object,
+        session_context: CopilotSessionContext,
+        conversation_id: str,
+    ) -> None:
+        """Remove a failed session and destroy it, logging any cleanup errors."""
+        self.sessions.pop(conversation_id, None)
+        self._session_last_used.pop(conversation_id, None)
+        try:
+            await client.async_end_session(session_context.session_id)  # type: ignore[union-attr]
+        except Exception as cleanup_err:  # noqa: BLE001
+            LOGGER.warning(
+                "Failed to clean up session %s after error: %s - %s",
+                session_context.session_id,
+                type(cleanup_err).__name__,
+                str(cleanup_err),
+            )
+
     async def _ensure_session(
         self,
         conversation_id: str,
@@ -265,8 +284,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 str(err),
                 exc_info=True,
             )
-            self.sessions.pop(conversation_id, None)
-            self._session_last_used.pop(conversation_id, None)
+            await self._end_session_safe(client, session_context, conversation_id)
             result = self._create_error_result(
                 user_input.language,
                 conversation_id,
@@ -280,8 +298,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 str(err),
                 exc_info=True,
             )
-            self.sessions.pop(conversation_id, None)
-            self._session_last_used.pop(conversation_id, None)
+            await self._end_session_safe(client, session_context, conversation_id)
             result = self._create_error_result(
                 user_input.language,
                 conversation_id,
@@ -295,8 +312,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
                 str(err),
                 exc_info=True,
             )
-            self.sessions.pop(conversation_id, None)
-            self._session_last_used.pop(conversation_id, None)
+            await self._end_session_safe(client, session_context, conversation_id)
             result = self._create_error_result(
                 user_input.language,
                 conversation_id,

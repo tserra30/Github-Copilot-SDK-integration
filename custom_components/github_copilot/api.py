@@ -214,6 +214,17 @@ class GitHubCopilotApiClient:
             msg = "Unable to clean up Copilot session."
             raise GitHubCopilotApiClientError(msg) from exception
 
+    async def _evict_broken_session(self, session_id: str) -> None:
+        """
+        Remove a broken session from the registry without destroying it.
+
+        Called after a communication failure when the underlying SDK session
+        may be in an indeterminate state. We only evict (not destroy) to avoid
+        triggering another hanging network call on a session we know is broken.
+        """
+        async with self._session_lock:
+            self._sessions.pop(session_id, None)
+
     async def async_send_prompt(self, session_id: str, prompt: str) -> str:
         """Send a prompt to an existing Copilot SDK session."""
         if not prompt.strip():
@@ -238,6 +249,8 @@ class GitHubCopilotApiClient:
                 str(exception),
                 exc_info=True,
             )
+            # Remove the stale session so it cannot be reused in a broken state.
+            await self._evict_broken_session(session_id)
             msg = (
                 "Request timed out waiting for Copilot response. "
                 "Please try again or check your connection."
@@ -251,6 +264,8 @@ class GitHubCopilotApiClient:
                 str(exception),
                 exc_info=True,
             )
+            # Remove the broken session so it cannot be reused.
+            await self._evict_broken_session(session_id)
             msg = "Lost connection to Copilot. Please check your network and try again."
             raise GitHubCopilotApiClientCommunicationError(msg) from exception
         except Exception as exception:
