@@ -12,6 +12,7 @@ from homeassistant.util import ulid
 
 from .api import (
     CopilotSessionContext,
+    GitHubCopilotApiClient,
     GitHubCopilotApiClientAuthenticationError,
     GitHubCopilotApiClientCommunicationError,
     GitHubCopilotApiClientError,
@@ -141,7 +142,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
 
     async def _end_session_safe(
         self,
-        client: object,
+        client: GitHubCopilotApiClient,
         session_context: CopilotSessionContext,
         conversation_id: str,
     ) -> None:
@@ -149,7 +150,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         self.sessions.pop(conversation_id, None)
         self._session_last_used.pop(conversation_id, None)
         try:
-            await client.async_end_session(session_context.session_id)  # type: ignore[union-attr]
+            await client.async_end_session(session_context.session_id)
         except Exception as cleanup_err:  # noqa: BLE001
             LOGGER.warning(
                 "Failed to clean up session %s after error: %s - %s",

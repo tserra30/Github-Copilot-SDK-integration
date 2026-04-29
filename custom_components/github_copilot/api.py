@@ -216,14 +216,30 @@ class GitHubCopilotApiClient:
 
     async def _evict_broken_session(self, session_id: str) -> None:
         """
-        Remove a broken session from the registry without destroying it.
+        Remove a broken session from the registry and attempt best-effort cleanup.
 
         Called after a communication failure when the underlying SDK session
-        may be in an indeterminate state. We only evict (not destroy) to avoid
-        triggering another hanging network call on a session we know is broken.
+        may be in an indeterminate state. The session is popped under the lock
+        to prevent reuse, then a short-timeout destroy() is attempted outside
+        the lock as a best-effort resource cleanup. Any destroy() failures are
+        logged and suppressed so they never surface to the caller.
         """
         async with self._session_lock:
-            self._sessions.pop(session_id, None)
+            session = self._sessions.pop(session_id, None)
+
+        if session is None:
+            return
+
+        try:
+            await asyncio.wait_for(session.copilot_session.destroy(), timeout=5.0)
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.warning(
+                "Best-effort destroy of broken session %s failed (%s: %s); "
+                "session has already been evicted from the registry.",
+                session_id,
+                type(exc).__name__,
+                exc,
+            )
 
     async def async_send_prompt(self, session_id: str, prompt: str) -> str:
         """Send a prompt to an existing Copilot SDK session."""
