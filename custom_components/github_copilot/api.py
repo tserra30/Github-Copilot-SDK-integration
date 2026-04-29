@@ -33,6 +33,9 @@ _SDK_INSTALL_HINT = (
     "pip install 'github-copilot-sdk==0.1.22'"
 )
 
+# Timeout (seconds) for best-effort session destroy() calls made during error cleanup.
+_SESSION_DESTROY_TIMEOUT = 5.0
+
 
 class GitHubCopilotApiClientError(Exception):
     """Exception to indicate a general API error."""
@@ -231,7 +234,10 @@ class GitHubCopilotApiClient:
             return
 
         try:
-            await asyncio.wait_for(session.copilot_session.destroy(), timeout=5.0)
+            await asyncio.wait_for(
+                session.copilot_session.destroy(),
+                timeout=_SESSION_DESTROY_TIMEOUT,
+            )
         except Exception as exc:  # noqa: BLE001
             LOGGER.warning(
                 "Best-effort destroy of broken session %s failed (%s: %s); "
