@@ -9,10 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No add-on changes yet.
 
+## [v3.9.8] - 2026-04-30
+
+### Changed
+- **Version bump to align with integration release v3.9.8**
+  - No add-on-specific changes in this release
+  - Integration updates include new AI models (GPT-4.1, GPT-5, Claude Sonnet 4.5, Claude Haiku 4.5, Claude Opus 4.6) and session-leak fixes
+
 ## [v3.9.4] - 2026-04-10
 
 ### Added
 - **Add icon and logo images** to add-on directory so the add-on displays its icon and logo in Home Assistant
+
+## [v3.9.2] - 2026-04-03
+
+### Changed
+- **Version bump to align with integration release v3.9.2**
+  - No add-on-specific changes in this release
+  - Integration updates include improved DNS error messages when connecting to the bridge add-on and a fix to the SDK wheel URL requirement format
+
+## [v3.9.0] - 2026-04-02
+
+### Changed
+- **Version bump to align with integration release v3.9.0**
+  - No add-on-specific changes in this release
+  - Integration updates include an improved GitHub Pages site with responsive design and dark mode
+
+## [v3.8.8] - 2026-04-05
+
+### Changed
+- **Version bump to align with integration release v3.8.8**
+  - No add-on-specific changes in this release
+  - Integration updates include the patched `github-copilot-sdk 0.1.22+ha` universal wheel (auto-installed from `manifest.json`) to fix Home Assistant OS installation failures
 
 ## [v3.8.3] - 2026-04-01
 
@@ -28,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Clarified SDK requirement for all modes** ([#107](https://github.com/tserra30/Github-Copilot-SDK-integration/pull/107))
   - `github-copilot-sdk` is required in **both** bridge add-on and local CLI modes — it is the Python client library the integration uses to communicate with the CLI server in all configurations
   - Updated documentation to correct misleading guidance that implied add-on mode needed no SDK
-  - On Home Assistant OS (glibc < 2.28), manually install the universal-wheel build: `pip install 'github-copilot-sdk==0.1.22'`; on standard Linux use `pip install 'github-copilot-sdk==0.1.32'`
+  - The integration now auto-installs the patched `0.1.22+ha` universal wheel from `manifest.json` — no manual install required on any platform
   - The bridge add-on eliminates the need for a **local Copilot CLI binary**; the Python SDK is still required
 
 ## [v3.7.5] - 2026-03-25
@@ -85,8 +113,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The bridge add-on is designed to work seamlessly with the GitHub Copilot Home Assistant integration:
 
-- **v3.8.3 (current)**: Compatible with integration v1.0.6 using github-copilot-sdk 0.1.32. On Home Assistant OS (glibc < 2.28) install the universal-wheel build manually: `pip install 'github-copilot-sdk==0.1.22'`
-- **v3.7.5 - v3.6.0**: Compatible with integration v1.0.4 using github-copilot-sdk 0.1.22
+- **v3.9.8 (current)**: Compatible with integration v1.0.7 using the patched `github-copilot-sdk 0.1.22+ha` wheel (auto-installed; works on all platforms including HA OS)
+- **v3.9.0 – v3.9.4**: Compatible with integration v1.0.6 using the patched `github-copilot-sdk 0.1.22+ha` wheel
+- **v3.8.3 – v3.8.8**: Compatible with integration v1.0.6 using the patched `github-copilot-sdk 0.1.22+ha` wheel (auto-installed from `manifest.json`; works on all platforms including HA OS)
+- **v3.7.5 – v3.6.0**: Compatible with integration v1.0.4 using github-copilot-sdk 0.1.22
 - **Earlier versions**: Compatible with older integration versions
 
 For best results, always use the latest versions of both the add-on and the integration.
@@ -98,6 +128,11 @@ For best results, always use the latest versions of both the add-on and the inte
 - The add-on URL format is `http://<hostname>:8000` where hostname can be found in the add-on Info tab
 - The bridge add-on is especially useful for Home Assistant OS users where manual CLI installation is challenging
 
+[v3.9.8]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.9.4...v3.9.8
+[v3.9.4]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.9.2...v3.9.4
+[v3.9.2]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.9.0...v3.9.2
+[v3.9.0]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.8.8...v3.9.0
+[v3.8.8]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.8.3...v3.8.8
 [v3.8.3]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.7.5...v3.8.3
 [v3.7.5]: https://github.com/tserra30/Github-Copilot-SDK-integration/releases/tag/v3.7.5
 [v3.6.0]: https://github.com/tserra30/Github-Copilot-SDK-integration/releases/tag/v3.6.0
