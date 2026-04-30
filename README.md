@@ -13,7 +13,7 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant using the
 
 - 🤖 **Conversation Agent** - Use GitHub Copilot as an AI conversation agent
 - 🎤 **Voice Assistant Support** - Works with Home Assistant's voice pipeline
-- 🔧 **Configurable Models** - Support for GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, and Claude 3.5 Sonnet
+- 🔧 **Configurable Models** - Support for GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-4.1, GPT-3.5 Turbo, GPT-5, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, Claude Sonnet 4.5, Claude Haiku 4.5, and Claude Opus 4.6
 - 💬 **Context Preservation** - Maintains conversation history within sessions via the SDK
 - 🐳 **Add-on Support** - Run the Copilot CLI as a Home Assistant add-on instead of installing it locally
 
@@ -37,7 +37,7 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant using the
 
 Installing the Copilot CLI inside the Home Assistant Core container can be difficult on Home Assistant OS. The included **GitHub Copilot Bridge** add-on solves this by running the CLI in a dedicated container that the integration connects to over the internal network.
 
-**Current Version**: v3.8.3
+**Current Version**: v3.9.8
 
 **Key Features**:
 - 🐳 **Containerized Copilot CLI server** running on port 8000 (internal network only)
@@ -49,10 +49,11 @@ Installing the Copilot CLI inside the Home Assistant Core container can be diffi
 - 🛡️ **Hardened authentication** with timeout protection to prevent startup blocking
 - 🎯 **Feature detection** for CLI flags to support multiple Copilot CLI versions
 
-**Recent Updates** (March-April 2026):
-- ✨ **v3.8.3**: Updated Copilot CLI to v1.0.13 for protocol v3 support
-- 🔧 **v3.7.5**: Enhanced auth probe mechanism and CLI flag compatibility
-- 🏔️ **v3.5.0**: Migrated to Debian Bullseye base for native glibc support (fixes CLI crashes)
+**Recent Updates** (March–April 2026):
+- ✨ **v3.9.8**: Added new AI models (GPT-4.1, GPT-5, Claude Sonnet 4.5, Claude Haiku 4.5, Claude Opus 4.6) and dynamic model fetching in the options flow
+- 🐛 **v3.9.2**: Fixed invalid wheel URL requirement and improved DNS error messages when connecting to the bridge add-on
+- 🖼️ **v3.9.4**: Added icon and logo images to the add-on directory for proper display in Home Assistant
+- 🔧 **v3.8.3**: Updated Copilot CLI to v1.0.13 for protocol v3 support
 
 For complete version history, see [addon/CHANGELOG.md](addon/CHANGELOG.md).
 
@@ -90,7 +91,7 @@ For example: `http://a1b2c3d4-github-copilot-bridge:8000`
 3. Search for **GitHub Copilot**
 4. Fill in the configuration:
    - **GitHub Token** – Your GitHub personal access token with Copilot permissions (optional when using Bridge add-on)
-   - **Model** – Select from GPT-4o (default), GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, or Claude 3.5 Sonnet
+   - **Model** – Select from GPT-4o (default), GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-4.1, GPT-3.5 Turbo, GPT-5, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, Claude Sonnet 4.5, Claude Haiku 4.5, or Claude Opus 4.6
    - **Copilot CLI URL (add-on)** *(optional)* – URL of the GitHub Copilot Bridge add-on (e.g. `http://a1b2c3d4-github-copilot-bridge:8000`). Leave empty to use a locally installed Copilot CLI.
 
 > **Tip for Home Assistant OS users**: Install the GitHub Copilot Bridge add-on (see above) and enter its URL in the "Copilot CLI URL" field. This is the easiest way to get the integration working without manually installing the CLI in the Core container.
