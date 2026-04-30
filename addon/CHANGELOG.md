@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - No add-on-specific changes in this release
   - Integration updates include an improved GitHub Pages site with responsive design and dark mode
 
-## [v3.8.8] - 2026-03-28
+## [v3.8.8] - 2026-04-05
 
 ### Changed
 - **Version bump to align with integration release v3.8.8**
@@ -115,7 +115,7 @@ The bridge add-on is designed to work seamlessly with the GitHub Copilot Home As
 
 - **v3.9.8 (current)**: Compatible with integration v1.0.7 using the patched `github-copilot-sdk 0.1.22+ha` wheel (auto-installed; works on all platforms including HA OS)
 - **v3.9.0 – v3.9.4**: Compatible with integration v1.0.6 using the patched `github-copilot-sdk 0.1.22+ha` wheel
-- **v3.8.3 – v3.8.8**: Compatible with integration v1.0.6 using github-copilot-sdk 0.1.32 (standard Linux) or 0.1.22 (HA OS)
+- **v3.8.3 – v3.8.8**: Compatible with integration v1.0.6 using the patched `github-copilot-sdk 0.1.22+ha` wheel (auto-installed from `manifest.json`; works on all platforms including HA OS)
 - **v3.7.5 – v3.6.0**: Compatible with integration v1.0.4 using github-copilot-sdk 0.1.22
 - **Earlier versions**: Compatible with older integration versions
 
