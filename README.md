@@ -49,14 +49,6 @@ Installing the Copilot CLI inside the Home Assistant Core container can be diffi
 - 🛡️ **Hardened authentication** with timeout protection to prevent startup blocking
 - 🎯 **Feature detection** for CLI flags to support multiple Copilot CLI versions
 
-**Recent Updates** (March–April 2026):
-- ✨ **v3.9.8**: Added new AI models (GPT-4.1, GPT-5, Claude Sonnet 4.5, Claude Haiku 4.5, Claude Opus 4.6) and dynamic model fetching in the options flow
-- 🐛 **v3.9.2**: Fixed invalid wheel URL requirement and improved DNS error messages when connecting to the bridge add-on
-- 🖼️ **v3.9.4**: Added icon and logo images to the add-on directory for proper display in Home Assistant
-- 🔧 **v3.8.3**: Updated Copilot CLI to v1.0.13 for protocol v3 support
-
-For complete version history, see [addon/CHANGELOG.md](addon/CHANGELOG.md).
-
 ### Installing the Add-on
 
 1. In Home Assistant, go to **Settings** → **Add-ons** → **Add-on Store**
