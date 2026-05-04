@@ -19,8 +19,10 @@ from .const import (
     CONF_API_TOKEN,
     CONF_CLI_URL,
     CONF_MODEL,
+    CONF_TIMEOUT,
     DEFAULT_CLI_URL,
     DEFAULT_MODEL,
+    DEFAULT_TIMEOUT,
     DOMAIN,
     LEGACY_MODEL_MAP,
     LOGGER,
@@ -237,13 +239,17 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
                 _errors[CONF_CLI_URL] = "invalid_url"
 
             if not _errors:
-                # Update the config entry with the normalized model and CLI URL
+                # Update the config entry with the normalized model, CLI URL,
+                # and timeout.
                 self.hass.config_entries.async_update_entry(
                     self.config_entry,
                     data={
                         **self.config_entry.data,
                         CONF_MODEL: user_input[CONF_MODEL],
                         CONF_CLI_URL: cli_url,
+                        CONF_TIMEOUT: float(
+                            user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+                        ),
                     },
                 )
                 return self.async_create_entry(title="", data={})
@@ -254,6 +260,11 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
 
         # Get current CLI URL from config entry
         current_cli_url = self.config_entry.data.get(CONF_CLI_URL, DEFAULT_CLI_URL)
+
+        # Get current timeout from config entry
+        current_timeout = float(
+            self.config_entry.data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+        )
 
         # Try to fetch the available models dynamically; fall back to the
         # hardcoded list if the API call fails or runtime_data is unavailable.
@@ -292,6 +303,18 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.URL,
+                        ),
+                    ),
+                    vol.Optional(
+                        CONF_TIMEOUT,
+                        default=current_timeout,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=10,
+                            max=600,
+                            step=10,
+                            unit_of_measurement="s",
+                            mode=selector.NumberSelectorMode.BOX,
                         ),
                     ),
                 }

@@ -18,8 +18,10 @@ from .const import (
     CONF_API_TOKEN,
     CONF_CLI_URL,
     CONF_MODEL,
+    CONF_TIMEOUT,
     DEFAULT_CLI_URL,
     DEFAULT_MODEL,
+    DEFAULT_TIMEOUT,
     DOMAIN,
     LEGACY_MODEL_MAP,
     LOGGER,
@@ -79,6 +81,7 @@ async def async_setup_entry(
             client=GitHubCopilotApiClient(
                 model=model,
                 client_options=client_options,
+                timeout=float(entry.data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)),
             ),
             integration=async_get_loaded_integration(hass, entry.domain),
             coordinator=coordinator,
