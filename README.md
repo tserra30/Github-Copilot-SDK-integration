@@ -86,6 +86,9 @@ For example: `http://a1b2c3d4-github-copilot-bridge:8000`
    - **Model** – Select from GPT-4o (default), GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-4.1, GPT-3.5 Turbo, GPT-5, o3-mini, o1, o1-mini, Claude 3.5 Sonnet, Claude Sonnet 4.5, Claude Haiku 4.5, or Claude Opus 4.6
    - **Copilot CLI URL (add-on)** *(optional)* – URL of the GitHub Copilot Bridge add-on (e.g. `http://a1b2c3d4-github-copilot-bridge:8000`). Leave empty to use a locally installed Copilot CLI.
 
+After setup you can adjust additional settings at any time via **Settings** → **Devices & Services** → **GitHub Copilot** → **Configure**:
+   - **Response timeout** *(default: 120 s)* – Maximum seconds to wait for a Copilot response. Increase this for reasoning-heavy models such as o1 or o3-mini, or for high-latency connections (range: 10–600 s).
+
 > **Tip for Home Assistant OS users**: Install the GitHub Copilot Bridge add-on (see above) and enter its URL in the "Copilot CLI URL" field. This is the easiest way to get the integration working without manually installing the CLI in the Core container.
 
 > **Note**: When using the Bridge add-on (with CLI URL), you can optionally provide the GitHub Token in the integration setup for reference, but the integration will not pass it to the SDK since the remote server manages its own authentication. The token configured in the add-on itself is what matters for authentication.
@@ -246,8 +249,11 @@ The Copilot CLI must be available **inside the Home Assistant Core container**, 
 - Verify the Copilot CLI is running: `copilot --version`
 - Check Home Assistant logs for detailed error messages
 
-### Slow Responses
+### Slow Responses or Timeout Errors
 
+If you see a `TimeoutError: Timeout after Xs waiting for session.idle` error, the integration waited longer than the configured limit before Copilot replied.
+
+- **Increase the response timeout**: Go to **Settings** → **Devices & Services** → **GitHub Copilot** → **Configure** and raise the **Response timeout** (default 120 s, up to 600 s). Reasoning models such as o1 and o3-mini can take significantly longer than GPT-4o.
 - Try using a faster model (e.g., GPT-3.5 Turbo or GPT-4o-mini)
 - Check your network latency
 - Reduce concurrent requests
