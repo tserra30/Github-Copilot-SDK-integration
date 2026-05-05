@@ -31,11 +31,13 @@
             "init": {
                 "data": {
                     "model": "Model",
-                    "cli_url": "Copilot CLI URL (add-on)"
+                    "cli_url": "Copilot CLI URL (add-on)",
+                    "timeout": "Response timeout"
                 },
                 "data_description": {
                     "model": "The AI model to use for conversations",
-                    "cli_url": "URL of the GitHub Copilot Bridge add-on server. Leave empty to use the locally installed Copilot CLI."
+                    "cli_url": "URL of the GitHub Copilot Bridge add-on server. Leave empty to use the locally installed Copilot CLI.",
+                    "timeout": "Maximum seconds to wait for a Copilot response before timing out. Increase this value for slower models (e.g. o1, o3-mini) or slower connections."
                 }
             }
         }

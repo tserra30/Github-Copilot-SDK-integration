@@ -106,10 +106,12 @@ class GitHubCopilotApiClient:
         model: str = "gpt-4o",
         *,
         client_options: dict[str, Any] | None = None,
+        timeout: float = 120.0,
     ) -> None:
         """Initialize GitHub Copilot SDK client wrapper."""
         self._model = model
         self._client_options = client_options or {}
+        self._timeout = timeout
         self._client: copilot.CopilotClient | None = None
         self._sessions: dict[str, CopilotSessionContext] = {}
         self._session_lock = asyncio.Lock()
@@ -262,7 +264,9 @@ class GitHubCopilotApiClient:
             raise GitHubCopilotApiClientError(msg)
 
         try:
-            event = await session.copilot_session.send_and_wait({"prompt": prompt})
+            event = await session.copilot_session.send_and_wait(
+                {"prompt": prompt}, timeout=self._timeout
+            )
         except TimeoutError as exception:
             LOGGER.error(
                 "Copilot session %s timed out waiting for response: %s - %s",
