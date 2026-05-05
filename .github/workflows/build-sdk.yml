@@ -15,6 +15,10 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: build-sdk
+  cancel-in-progress: false
+
 jobs:
   build-sdk:
     name: Build github-copilot-sdk with protocol v3 support
@@ -135,6 +139,7 @@ jobs:
           echo "Wheel filename verified: $(basename $wheel_file)"
 
       - name: Create pull request with updated wheel
+        if: github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
         with:
           commit-message: |
@@ -145,7 +150,8 @@ jobs:
             - Accept both protocol v2 and v3 for backward compatibility
             - Universal py3-none-any wheel compatible with Home Assistant OS
             Wheel: github_copilot_sdk-0.1.22+ha-py3-none-any.whl
-          branch: update-sdk-wheel
+          branch: sdk-build
+          base: main
           delete-branch: true
           title: "Update patched github-copilot-sdk wheel"
           body: |
