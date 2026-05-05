@@ -2,6 +2,8 @@ name: Build Patched SDK
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 1'  # Every Monday at midnight UTC
   push:
     branches:
       - main
@@ -11,6 +13,11 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+
+concurrency:
+  group: build-sdk
+  cancel-in-progress: false
 
 jobs:
   build-sdk:
@@ -131,29 +138,25 @@ jobs:
           fi
           echo "Wheel filename verified: $(basename $wheel_file)"
 
-      - name: Commit and push wheel
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Create pull request with updated wheel
+        if: github.ref == 'refs/heads/main'
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        with:
+          commit-message: |
+            Update patched github-copilot-sdk wheel with protocol v3 support
 
-          # Add wheels directory (already tracked, just update it)
-          git add wheels/
-
-          # Check if there are changes to commit
-          if git diff --cached --quiet; then
-            echo "No changes to commit - wheel is up to date"
-          else
-            git commit \
-              -m "Update patched github-copilot-sdk wheel with protocol v3 support" \
-              -m "Built from SDK 0.1.22 source with patches:" \
-              -m "- Update SDK_PROTOCOL_VERSION to 3" \
-              -m "- Accept both protocol v2 and v3 for backward compatibility" \
-              -m "- Universal py3-none-any wheel compatible with Home Assistant OS" \
-              -m "Wheel: github_copilot_sdk-0.1.22+ha-py3-none-any.whl"
-
-            echo "Wheel committed to repository"
-
-            # Push changes to the branch that triggered the workflow
-            git push origin HEAD:refs/heads/${{ github.ref_name }}
-            echo "Changes pushed successfully"
-          fi
+            Built from SDK 0.1.22 source with patches:
+            - Update SDK_PROTOCOL_VERSION to 3
+            - Accept both protocol v2 and v3 for backward compatibility
+            - Universal py3-none-any wheel compatible with Home Assistant OS
+            Wheel: github_copilot_sdk-0.1.22+ha-py3-none-any.whl
+          branch: sdk-build
+          base: main
+          delete-branch: true
+          title: "Update patched github-copilot-sdk wheel"
+          body: |
+            Automated wheel rebuild from SDK 0.1.22 source with patches:
+            - `SDK_PROTOCOL_VERSION` updated to 3
+            - Protocol check accepts both v2 and v3 (backward compatible)
+            - Universal `py3-none-any` wheel compatible with Home Assistant OS
+          add-paths: wheels/
