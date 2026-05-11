@@ -37,7 +37,7 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant using the
 
 Installing the Copilot CLI inside the Home Assistant Core container can be difficult on Home Assistant OS. The included **GitHub Copilot Bridge** add-on solves this by running the CLI in a dedicated container that the integration connects to over the internal network.
 
-**Current Version**: v3.9.8
+**Current Version**: v3.10.0
 
 **Key Features**:
 - 🐳 **Containerized Copilot CLI server** running on port 8000 (internal network only)
@@ -48,6 +48,7 @@ Installing the Copilot CLI inside the Home Assistant Core container can be diffi
 - 🚀 **Auto-start on boot** with configurable GitHub token
 - 🛡️ **Hardened authentication** with timeout protection to prevent startup blocking
 - 🎯 **Feature detection** for CLI flags to support multiple Copilot CLI versions
+- 🧰 **Optional bundled MCP server** that can be enabled in add-on settings and used by SDK sessions through the bridge
 
 ### Installing the Add-on
 
@@ -58,9 +59,14 @@ Installing the Copilot CLI inside the Home Assistant Core container can be diffi
 5. Go to the add-on's **Configuration** tab and set your GitHub token:
    ```yaml
    github_token: "ghp_yourTokenHere"
+   enable_bundled_mcp_server: true
    ```
 6. Start the add-on
 7. Check the **Log** tab to confirm it started successfully
+
+When `enable_bundled_mcp_server` is set to `true`, the add-on injects a bundled MCP
+time server into the Copilot CLI startup configuration (`--additional-mcp-config`), so
+sessions created through the SDK can use MCP tools via the bridge.
 
 ### Finding the Add-on Hostname
 

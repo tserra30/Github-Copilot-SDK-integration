@@ -1,11 +1,12 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bullseye
 FROM $BUILD_FROM
 
-# Install curl, ca-certificates, and tar.
+# Install curl, ca-certificates, tar, and Python runtime for bundled MCP server.
 # Debian natively supports glibc, so the Copilot CLI binary runs without
 # compatibility shims.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates tar \
+    && apt-get install -y --no-install-recommends curl ca-certificates tar python3 python3-pip \
+    && python3 -m pip install --break-system-packages --no-cache-dir mcp-server-time==2026.1.26 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
