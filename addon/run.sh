@@ -57,7 +57,7 @@ fi
 
 if bashio::var.true "${ENABLE_BUNDLED_MCP_SERVER}"; then
     if ! command -v mcp-server-time >/dev/null 2>&1; then
-        bashio::log.fatal "Bundled MCP server is enabled but mcp-server-time is not installed in the add-on image."
+        bashio::log.fatal "Bundled MCP server is enabled but mcp-server-time was not installed during image build. Rebuild/reinstall the add-on image."
         exit 1
     fi
 
@@ -77,6 +77,7 @@ if bashio::var.true "${ENABLE_BUNDLED_MCP_SERVER}"; then
 }
 EOF
 
+    # The @ prefix tells Copilot CLI to treat the value as a file path.
     COPILOT_ARGS+=(--additional-mcp-config "@${BUNDLED_MCP_CONFIG}")
     bashio::log.info "Bundled MCP time server enabled."
 fi
