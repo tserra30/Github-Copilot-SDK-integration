@@ -60,6 +60,10 @@ if bashio::var.true "${ENABLE_BUNDLED_MCP_SERVER}"; then
         bashio::log.fatal "Bundled MCP server is enabled but mcp-server-time was not installed during image build. Rebuild/reinstall the add-on image."
         exit 1
     fi
+    if ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
+        bashio::log.fatal "Bundled MCP server requires Copilot CLI support for --additional-mcp-config, but this CLI version does not provide it."
+        exit 1
+    fi
 
     # Configure a bundled MCP server and pass it to Copilot CLI so SDK sessions
     # can use it automatically when connected through this bridge.

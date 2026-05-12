@@ -6,7 +6,7 @@ FROM $BUILD_FROM
 # compatibility shims.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates tar python3 python3-pip \
-    && python3 -m pip install --break-system-packages --no-cache-dir mcp-server-time==2026.1.26 \
+    && python3 -m pip install --no-cache-dir mcp-server-time==2026.1.26 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
