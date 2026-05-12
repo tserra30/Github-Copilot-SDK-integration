@@ -61,7 +61,7 @@ if bashio::var.true "${ENABLE_BUNDLED_MCP_SERVER}"; then
         exit 1
     fi
     if ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
-        bashio::log.fatal "Bundled MCP server requires Copilot CLI support for --additional-mcp-config, but this CLI version does not provide it."
+        bashio::log.fatal "Bundled MCP server requires Copilot CLI support for --additional-mcp-config, but this CLI version does not provide it. Update the add-on image to a newer Copilot CLI build."
         exit 1
     fi
 
