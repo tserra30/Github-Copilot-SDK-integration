@@ -2,6 +2,7 @@
 
 # Read GitHub token from add-on options
 GITHUB_TOKEN=$(bashio::config 'github_token')
+ENABLE_BUNDLED_MCP_SERVER=$(bashio::config 'enable_bundled_mcp_server')
 
 if bashio::var.is_empty "${GITHUB_TOKEN}"; then
     bashio::log.fatal "No GitHub token configured. Please set 'github_token' in the add-on options."
@@ -52,6 +53,38 @@ if has_flag "${COPILOT_HELP}" no-auto-update; then
 fi
 if has_flag "${COPILOT_HELP}" log-level; then
     COPILOT_ARGS+=(--log-level info)
+fi
+
+if bashio::var.true "${ENABLE_BUNDLED_MCP_SERVER}"; then
+    if ! command -v mcp-server-time >/dev/null 2>&1; then
+        bashio::log.fatal "Bundled MCP server is enabled but mcp-server-time was not installed during image build. Rebuild/reinstall the add-on image."
+        exit 1
+    fi
+    # Flag availability can vary by CLI version/help surface; check both outputs.
+    if ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
+        bashio::log.fatal "Bundled MCP server requires Copilot CLI support for --additional-mcp-config, but this CLI version does not provide it. Update the add-on image to a newer Copilot CLI build."
+        exit 1
+    fi
+
+    # Configure a bundled MCP server and pass it to Copilot CLI so SDK sessions
+    # can use it automatically when connected through this bridge.
+    BUNDLED_MCP_CONFIG=/tmp/copilot-bundled-mcp-config.json
+    cat >"${BUNDLED_MCP_CONFIG}" <<'EOF'
+{
+  "mcpServers": {
+    "time": {
+      "type": "local",
+      "command": "mcp-server-time",
+      "args": [],
+      "tools": ["*"]
+    }
+  }
+}
+EOF
+
+    # The @ prefix tells Copilot CLI to treat the value as a file path.
+    COPILOT_ARGS+=(--additional-mcp-config "@${BUNDLED_MCP_CONFIG}")
+    bashio::log.info "Bundled MCP time server enabled."
 fi
 
 # Start the Copilot CLI in headless server mode with a retry loop.

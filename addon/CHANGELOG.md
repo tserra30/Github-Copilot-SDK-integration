@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- No add-on changes yet.
+## [v3.10.0] - 2026-05-12
+
+### Added
+- Added new add-on option `enable_bundled_mcp_server` to enable a bundled MCP time server.
+
+### Changed
+- Bridge add-on now installs `mcp-server-time` in the container image.
+- Add-on startup now passes `--additional-mcp-config` to Copilot CLI when bundled MCP is enabled, so SDK sessions can use MCP tools through the bridge.
 
 ## [v3.9.8] - 2026-04-30
 
@@ -113,7 +120,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The bridge add-on is designed to work seamlessly with the GitHub Copilot Home Assistant integration:
 
-- **v3.9.8 (current)**: Compatible with integration v1.0.7 using the patched `github-copilot-sdk 0.1.22+ha` wheel (auto-installed; works on all platforms including HA OS)
+- **v3.10.0 (current)**: Compatible with integration v1.0.7 using the patched `github-copilot-sdk 0.1.22+ha` wheel (auto-installed; works on all platforms including HA OS)
+- **v3.9.8**: Compatible with integration v1.0.7 using the patched `github-copilot-sdk 0.1.22+ha` wheel (auto-installed; works on all platforms including HA OS)
 - **v3.9.0 – v3.9.4**: Compatible with integration v1.0.6 using the patched `github-copilot-sdk 0.1.22+ha` wheel
 - **v3.8.3 – v3.8.8**: Compatible with integration v1.0.6 using the patched `github-copilot-sdk 0.1.22+ha` wheel (auto-installed from `manifest.json`; works on all platforms including HA OS)
 - **v3.7.5 – v3.6.0**: Compatible with integration v1.0.4 using github-copilot-sdk 0.1.22
@@ -128,6 +136,7 @@ For best results, always use the latest versions of both the add-on and the inte
 - The add-on URL format is `http://<hostname>:8000` where hostname can be found in the add-on Info tab
 - The bridge add-on is especially useful for Home Assistant OS users where manual CLI installation is challenging
 
+[v3.10.0]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.9.8...v3.10.0
 [v3.9.8]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.9.4...v3.9.8
 [v3.9.4]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.9.2...v3.9.4
 [v3.9.2]: https://github.com/tserra30/Github-Copilot-SDK-integration/compare/v3.9.0...v3.9.2
