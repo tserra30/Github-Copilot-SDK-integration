@@ -6,7 +6,10 @@ FROM $BUILD_FROM
 # compatibility shims.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates tar python3 python3-pip \
-    && python3 -m pip install --no-cache-dir mcp-server-time==2026.1.26 \
+    && if ! python3 -m pip install --no-cache-dir mcp-server-time==2026.1.26; then \
+        echo "WARNING: Unable to install mcp-server-time==2026.1.26 with the base image Python runtime." >&2; \
+        echo "WARNING: The add-on will continue to build, but bundled MCP time server support will be unavailable." >&2; \
+      fi \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

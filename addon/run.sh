@@ -57,19 +57,15 @@ fi
 
 if bashio::var.true "${ENABLE_BUNDLED_MCP_SERVER}"; then
     if ! command -v mcp-server-time >/dev/null 2>&1; then
-        bashio::log.fatal "Bundled MCP server is enabled but mcp-server-time was not installed during image build. Rebuild/reinstall the add-on image."
-        exit 1
-    fi
+        bashio::log.warning "Bundled MCP server is enabled, but mcp-server-time is unavailable in this image. Continuing without bundled MCP tools."
     # Flag availability can vary by CLI version/help surface; check both outputs.
-    if ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
-        bashio::log.fatal "Bundled MCP server requires Copilot CLI support for --additional-mcp-config, but this CLI version does not provide it. Update the add-on image to a newer Copilot CLI build."
-        exit 1
-    fi
-
-    # Configure a bundled MCP server and pass it to Copilot CLI so SDK sessions
-    # can use it automatically when connected through this bridge.
-    BUNDLED_MCP_CONFIG=/tmp/copilot-bundled-mcp-config.json
-    cat >"${BUNDLED_MCP_CONFIG}" <<'EOF'
+    elif ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
+        bashio::log.warning "Bundled MCP server is enabled, but this Copilot CLI does not support --additional-mcp-config. Continuing without bundled MCP tools."
+    else
+        # Configure a bundled MCP server and pass it to Copilot CLI so SDK sessions
+        # can use it automatically when connected through this bridge.
+        BUNDLED_MCP_CONFIG=/tmp/copilot-bundled-mcp-config.json
+        cat >"${BUNDLED_MCP_CONFIG}" <<'EOF'
 {
   "mcpServers": {
     "time": {
@@ -82,9 +78,10 @@ if bashio::var.true "${ENABLE_BUNDLED_MCP_SERVER}"; then
 }
 EOF
 
-    # The @ prefix tells Copilot CLI to treat the value as a file path.
-    COPILOT_ARGS+=(--additional-mcp-config "@${BUNDLED_MCP_CONFIG}")
-    bashio::log.info "Bundled MCP time server enabled."
+        # The @ prefix tells Copilot CLI to treat the value as a file path.
+        COPILOT_ARGS+=(--additional-mcp-config "@${BUNDLED_MCP_CONFIG}")
+        bashio::log.info "Bundled MCP time server enabled."
+    fi
 fi
 
 # Start the Copilot CLI in headless server mode with a retry loop.
