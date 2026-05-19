@@ -37,7 +37,7 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant using the
 
 Installing the Copilot CLI inside the Home Assistant Core container can be difficult on Home Assistant OS. The included **GitHub Copilot Bridge** add-on solves this by running the CLI in a dedicated container that the integration connects to over the internal network.
 
-**Current Version**: v3.10.1
+**Current Version**: v3.10.2
 
 **Key Features**:
 - 🐳 **Containerized Copilot CLI server** running on port 8000 (internal network only)
