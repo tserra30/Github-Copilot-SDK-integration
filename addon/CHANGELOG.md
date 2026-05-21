@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Switched add-on Debian base images from Bullseye to Bookworm so the bundled `mcp-server-time` dependency can be installed with the image Python runtime.
+- Fixed PEP 668 "externally managed environment" protection on Bookworm by installing `mcp-server-time` into a virtualenv instead of the system Python.
 
 ## [v3.10.1] - 2026-05-13
 
