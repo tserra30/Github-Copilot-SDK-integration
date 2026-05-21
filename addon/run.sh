@@ -69,8 +69,8 @@ if has_flag "${COPILOT_HELP}" log-level; then
     COPILOT_ARGS+=(--log-level info)
 fi
 
-PROCESSED_MCP_CONFIG=$(printf '%s' "${MCP_CONFIG}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-if ! bashio::var.is_empty "${PROCESSED_MCP_CONFIG}"; then
+TRIMMED_MCP_CONFIG=$(printf '%s' "${MCP_CONFIG}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+if ! bashio::var.is_empty "${TRIMMED_MCP_CONFIG}"; then
     # Flag availability can vary by CLI version/help surface; check both outputs.
     if ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
         bashio::log.warning "Custom MCP config was provided, but this Copilot CLI does not support --additional-mcp-config. Continuing without MCP tools."
@@ -78,10 +78,10 @@ if ! bashio::var.is_empty "${PROCESSED_MCP_CONFIG}"; then
         MCP_CONFIG_FILE=""
         MCP_CONFIG_PATH=""
 
-        if [[ "${PROCESSED_MCP_CONFIG}" == @* ]]; then
-            MCP_CONFIG_PATH="${PROCESSED_MCP_CONFIG#@}"
-        elif [ -f "${PROCESSED_MCP_CONFIG}" ]; then
-            MCP_CONFIG_PATH="${PROCESSED_MCP_CONFIG}"
+        if [[ "${TRIMMED_MCP_CONFIG}" == @* ]]; then
+            MCP_CONFIG_PATH="${TRIMMED_MCP_CONFIG#@}"
+        elif [[ "${TRIMMED_MCP_CONFIG}" != \{* ]]; then
+            MCP_CONFIG_PATH="${TRIMMED_MCP_CONFIG}"
         fi
 
         if [ -n "${MCP_CONFIG_PATH}" ]; then
@@ -91,9 +91,9 @@ if ! bashio::var.is_empty "${PROCESSED_MCP_CONFIG}"; then
             fi
             MCP_CONFIG_FILE="${MCP_CONFIG_PATH}"
             bashio::log.info "Using custom MCP config file: ${MCP_CONFIG_PATH}"
-        elif [[ "${PROCESSED_MCP_CONFIG}" == \{* ]]; then
+        elif [[ "${TRIMMED_MCP_CONFIG}" == \{* ]]; then
             CUSTOM_MCP_CONFIG_FILE=/tmp/copilot-custom-mcp-config.json
-            printf '%s\n' "${PROCESSED_MCP_CONFIG}" >"${CUSTOM_MCP_CONFIG_FILE}"
+            printf '%s\n' "${TRIMMED_MCP_CONFIG}" >"${CUSTOM_MCP_CONFIG_FILE}"
             MCP_CONFIG_FILE="${CUSTOM_MCP_CONFIG_FILE}"
             bashio::log.info "Using inline MCP config from add-on options."
         else
