@@ -4,6 +4,9 @@
 GITHUB_TOKEN=$(bashio::config 'github_token')
 ENABLE_BUNDLED_MCP_SERVER=$(bashio::config 'enable_bundled_mcp_server')
 
+# Add the bundled MCP virtualenv to PATH so mcp-server-time is available.
+export PATH="/opt/mcp-venv/bin:${PATH}"
+
 if bashio::var.is_empty "${GITHUB_TOKEN}"; then
     bashio::log.fatal "No GitHub token configured. Please set 'github_token' in the add-on options."
     exit 1

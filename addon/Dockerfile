@@ -1,15 +1,13 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bullseye
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bookworm
 FROM $BUILD_FROM
 
 # Install curl, ca-certificates, tar, and Python runtime for bundled MCP server.
 # Debian natively supports glibc, so the Copilot CLI binary runs without
 # compatibility shims.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates tar python3 python3-pip \
-    && if ! python3 -m pip install --no-cache-dir mcp-server-time==2026.1.26; then \
-        echo "WARNING: Unable to install mcp-server-time==2026.1.26 with the base image Python runtime." >&2; \
-        echo "WARNING: The add-on will continue to build, but bundled MCP time server support will be unavailable." >&2; \
-      fi \
+    && apt-get install -y --no-install-recommends curl ca-certificates tar python3 python3-venv \
+    && python3 -m venv /opt/mcp-venv \
+    && /opt/mcp-venv/bin/pip install --no-cache-dir mcp-server-time==2026.1.26 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
