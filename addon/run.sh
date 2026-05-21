@@ -2,10 +2,7 @@
 
 # Read GitHub token from add-on options
 GITHUB_TOKEN=$(bashio::config 'github_token')
-ENABLE_BUNDLED_MCP_SERVER=$(bashio::config 'enable_bundled_mcp_server')
-
-# Add the bundled MCP virtualenv to PATH so mcp-server-time is available.
-export PATH="/opt/mcp-venv/bin:${PATH}"
+MCP_CONFIG=$(bashio::config 'mcp_config')
 
 if bashio::var.is_empty "${GITHUB_TOKEN}"; then
     bashio::log.fatal "No GitHub token configured. Please set 'github_token' in the add-on options."
@@ -46,6 +43,11 @@ has_flag() {
     local help_text="${1}" flag="${2}"
     printf '%s\n' "${help_text}" | grep -qE "^[[:space:]]*--${flag}([[:space:]=]|$)"
 }
+is_likely_mcp_json() {
+    local json_value="${1}"
+    [[ "${json_value}" == \{* ]] && [[ "${json_value}" == *\} ]] || return 1
+    printf '%s\n' "${json_value}" | grep -qE '"mcpServers"[[:space:]]*:'
+}
 COPILOT_ARGS=(--headless --port 8000)
 # --bind may only appear under the headless sub-command help.
 if has_flag "${COPILOT_HEADLESS_HELP}" bind || has_flag "${COPILOT_HELP}" bind; then
@@ -58,32 +60,36 @@ if has_flag "${COPILOT_HELP}" log-level; then
     COPILOT_ARGS+=(--log-level info)
 fi
 
-if bashio::var.true "${ENABLE_BUNDLED_MCP_SERVER}"; then
-    if ! command -v mcp-server-time >/dev/null 2>&1; then
-        bashio::log.warning "Bundled MCP server is enabled, but mcp-server-time is unavailable in this image. Continuing without bundled MCP tools."
+MCP_CONFIG=$(printf '%s' "${MCP_CONFIG}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+if ! bashio::var.is_empty "${MCP_CONFIG}"; then
     # Flag availability can vary by CLI version/help surface; check both outputs.
-    elif ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
-        bashio::log.warning "Bundled MCP server is enabled, but this Copilot CLI does not support --additional-mcp-config. Continuing without bundled MCP tools."
+    if ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
+        bashio::log.warning "Custom MCP config was provided, but this Copilot CLI does not support --additional-mcp-config. Continuing without MCP tools."
     else
-        # Configure a bundled MCP server and pass it to Copilot CLI so SDK sessions
-        # can use it automatically when connected through this bridge.
-        BUNDLED_MCP_CONFIG=/tmp/copilot-bundled-mcp-config.json
-        cat >"${BUNDLED_MCP_CONFIG}" <<'EOF'
-{
-  "mcpServers": {
-    "time": {
-      "type": "local",
-      "command": "mcp-server-time",
-      "args": [],
-      "tools": ["*"]
-    }
-  }
-}
-EOF
+        ADDITIONAL_MCP_CONFIG_VALUE=""
 
-        # The @ prefix tells Copilot CLI to treat the value as a file path.
-        COPILOT_ARGS+=(--additional-mcp-config "@${BUNDLED_MCP_CONFIG}")
-        bashio::log.info "Bundled MCP time server enabled."
+        if [[ "${MCP_CONFIG}" == @* ]]; then
+            MCP_CONFIG_PATH="${MCP_CONFIG#@}"
+            if [ ! -f "${MCP_CONFIG_PATH}" ]; then
+                bashio::log.fatal "Invalid MCP config path '${MCP_CONFIG_PATH}': file does not exist."
+                exit 1
+            fi
+            ADDITIONAL_MCP_CONFIG_VALUE="@${MCP_CONFIG_PATH}"
+            bashio::log.info "Using custom MCP config file: ${MCP_CONFIG_PATH}"
+        elif [ -f "${MCP_CONFIG}" ]; then
+            ADDITIONAL_MCP_CONFIG_VALUE="@${MCP_CONFIG}"
+            bashio::log.info "Using custom MCP config file: ${MCP_CONFIG}"
+        elif is_likely_mcp_json "${MCP_CONFIG}"; then
+            CUSTOM_MCP_CONFIG_FILE=/tmp/copilot-custom-mcp-config.json
+            printf '%s\n' "${MCP_CONFIG}" >"${CUSTOM_MCP_CONFIG_FILE}"
+            ADDITIONAL_MCP_CONFIG_VALUE="@${CUSTOM_MCP_CONFIG_FILE}"
+            bashio::log.info "Using inline MCP config from add-on options."
+        else
+            bashio::log.fatal "Invalid mcp_config. Provide a JSON object containing 'mcpServers' or a valid file path."
+            exit 1
+        fi
+
+        COPILOT_ARGS+=(--additional-mcp-config "${ADDITIONAL_MCP_CONFIG_VALUE}")
     fi
 fi
 
