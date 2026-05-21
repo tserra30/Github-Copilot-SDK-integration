@@ -51,11 +51,11 @@ validate_mcp_config_file() {
     fi
 
     if command -v jq >/dev/null 2>&1; then
-        jq -e '.mcpServers | type == "object"' "${config_file}" >/dev/null 2>&1
+        jq -e 'type == "object" and (.mcpServers | type == "object")' "${config_file}" >/dev/null 2>&1
         return $?
     fi
 
-    grep -qE '"mcpServers"[[:space:]]*:' "${config_file}"
+    grep -qE '^[[:space:]]*\{' "${config_file}" && grep -qE '"mcpServers"[[:space:]]*:' "${config_file}"
 }
 COPILOT_ARGS=(--headless --port 8000)
 # --bind may only appear under the headless sub-command help.
@@ -78,6 +78,7 @@ if ! bashio::var.is_empty "${TRIMMED_MCP_CONFIG}"; then
         MCP_CONFIG_FILE=""
         MCP_CONFIG_PATH=""
 
+        # Accept either "/path/to/file.json" or "@/path/to/file.json".
         if [[ "${TRIMMED_MCP_CONFIG}" == @* ]]; then
             MCP_CONFIG_PATH="${TRIMMED_MCP_CONFIG#@}"
         elif [[ "${TRIMMED_MCP_CONFIG}" != \{* ]]; then
@@ -89,6 +90,10 @@ if ! bashio::var.is_empty "${TRIMMED_MCP_CONFIG}"; then
                 bashio::log.fatal "Invalid MCP config path '${MCP_CONFIG_PATH}': file does not exist."
                 exit 1
             fi
+            if [ ! -r "${MCP_CONFIG_PATH}" ]; then
+                bashio::log.fatal "Invalid MCP config path '${MCP_CONFIG_PATH}': file is not readable."
+                exit 1
+            fi
             MCP_CONFIG_FILE="${MCP_CONFIG_PATH}"
             bashio::log.info "Using custom MCP config file: ${MCP_CONFIG_PATH}"
         elif [[ "${TRIMMED_MCP_CONFIG}" == \{* ]]; then
@@ -96,9 +101,6 @@ if ! bashio::var.is_empty "${TRIMMED_MCP_CONFIG}"; then
             printf '%s\n' "${TRIMMED_MCP_CONFIG}" >"${CUSTOM_MCP_CONFIG_FILE}"
             MCP_CONFIG_FILE="${CUSTOM_MCP_CONFIG_FILE}"
             bashio::log.info "Using inline MCP config from add-on options."
-        else
-            bashio::log.fatal "Invalid mcp_config. Provide a JSON object containing 'mcpServers' or a valid file path."
-            exit 1
         fi
 
         if ! validate_mcp_config_file "${MCP_CONFIG_FILE}"; then
