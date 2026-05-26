@@ -3,7 +3,7 @@ FROM $BUILD_FROM
 
 # Install only required runtime dependencies.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates tar \
+    && apt-get install -y --no-install-recommends curl ca-certificates tar jq \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

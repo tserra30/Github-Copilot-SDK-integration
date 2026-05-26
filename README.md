@@ -91,7 +91,7 @@ mcp_config: '{"mcpServers":{"mytool":{"type":"local","command":"/usr/local/bin/m
 
 ```yaml
 github_token: "ghp_yourTokenHere"
-mcp_config: '{"mcpServers":{"ha":{"transport":"streamable-http","url":"http://homeassistant.local:8080/mcp"},"time":{"type":"local","command":"mcp-server-time","args":[]}}}'
+mcp_config: '{"mcpServers":{"ha":{"transport":"streamable-http","url":"http://homeassistant.local:8080/mcp"},"remote-tool":{"transport":"streamable-http","url":"http://remote-mcp-server:3000"}}}'
 ```
 
 **Use config from file**
