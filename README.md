@@ -37,7 +37,7 @@ _Integration to bring GitHub Copilot AI capabilities to Home Assistant using the
 
 Installing the Copilot CLI inside the Home Assistant Core container can be difficult on Home Assistant OS. The included **GitHub Copilot Bridge** add-on solves this by running the CLI in a dedicated container that the integration connects to over the internal network.
 
-**Current Version**: v3.10.2
+**Current Version**: v3.11.0
 
 **Key Features**:
 - 🐳 **Containerized Copilot CLI server** running on port 8000 (internal network only)
@@ -48,7 +48,7 @@ Installing the Copilot CLI inside the Home Assistant Core container can be diffi
 - 🚀 **Auto-start on boot** with configurable GitHub token
 - 🛡️ **Hardened authentication** with timeout protection to prevent startup blocking
 - 🎯 **Feature detection** for CLI flags to support multiple Copilot CLI versions
-- 🧰 **Optional bundled MCP server** that can be enabled in add-on settings and used by SDK sessions through the bridge
+- 🧰 **Custom MCP support** via add-on options (inline JSON or config file path)
 
 ### Installing the Add-on
 
@@ -59,20 +59,47 @@ Installing the Copilot CLI inside the Home Assistant Core container can be diffi
 5. Go to the add-on's **Configuration** tab and set your GitHub token:
    ```yaml
    github_token: "ghp_yourTokenHere"
-   enable_bundled_mcp_server: true
+   mcp_config: ""
    ```
 6. Start the add-on
 7. Check the **Log** tab to confirm it started successfully
 
-When `enable_bundled_mcp_server` is set to `true`, the add-on attempts to inject a
-bundled MCP time server into the Copilot CLI startup configuration
-(`--additional-mcp-config`) so sessions created through the SDK can use MCP tools via
-the bridge.
+When `mcp_config` is provided, the add-on passes it to Copilot CLI via
+`--additional-mcp-config` so SDK sessions created through the bridge can use MCP tools.
 
-If bundled MCP prerequisites are unavailable in a given image/runtime (for example,
-`mcp-server-time` is not installed or the CLI build does not support
-`--additional-mcp-config`), the add-on logs warnings and continues startup without
-bundled MCP tools.
+`mcp_config` accepts:
+- A JSON object string containing `mcpServers`
+- A file path to a JSON config (for example `/config/copilot/mcp.json`)
+
+### MCP Configuration Examples (Bridge Add-on)
+
+**ha-mcp (remote server)**
+
+```yaml
+github_token: "ghp_yourTokenHere"
+mcp_config: '{"mcpServers":{"ha":{"transport":"streamable-http","url":"http://homeassistant.local:8080/mcp","headers":{"Authorization":"Bearer YOUR_HA_LONG_LIVED_TOKEN"}}}}'
+```
+
+**Custom local MCP server**
+
+```yaml
+github_token: "ghp_yourTokenHere"
+mcp_config: '{"mcpServers":{"mytool":{"type":"local","command":"/usr/local/bin/my-mcp-server","args":[],"tools":["*"]}}}'
+```
+
+**Multiple MCP servers**
+
+```yaml
+github_token: "ghp_yourTokenHere"
+mcp_config: '{"mcpServers":{"ha":{"transport":"streamable-http","url":"http://homeassistant.local:8080/mcp"},"remote-tool":{"transport":"streamable-http","url":"http://remote-mcp-server:3000"}}}'
+```
+
+**Use config from file**
+
+```yaml
+github_token: "ghp_yourTokenHere"
+mcp_config: "/config/copilot/mcp.json"
+```
 
 ### Finding the Add-on Hostname
 
@@ -148,6 +175,12 @@ automation:
 For detailed setup and usage guidance, use this README. For contributing and development details, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Troubleshooting
+
+### Bridge add-on MCP configuration
+
+- **`Invalid mcp_config` at startup**: Ensure `mcp_config` is valid JSON containing `mcpServers`, or a valid file path.
+- **`file does not exist` error**: If you pass a file path, verify the file exists in the add-on container (for example under `/config`).
+- **MCP tools not loaded**: Check add-on logs to confirm your Copilot CLI build supports `--additional-mcp-config`.
 
 ### SDK Installation
 

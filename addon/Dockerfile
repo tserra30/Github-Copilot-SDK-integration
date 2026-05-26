@@ -1,13 +1,9 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bookworm
 FROM $BUILD_FROM
 
-# Install curl, ca-certificates, tar, and Python runtime for bundled MCP server.
-# Debian natively supports glibc, so the Copilot CLI binary runs without
-# compatibility shims.
+# Install only required runtime dependencies.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates tar python3 python3-venv \
-    && python3 -m venv /opt/mcp-venv \
-    && /opt/mcp-venv/bin/pip install --no-cache-dir mcp-server-time==2026.1.26 \
+    && apt-get install -y --no-install-recommends curl ca-certificates tar jq \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

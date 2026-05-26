@@ -2,10 +2,7 @@
 
 # Read GitHub token from add-on options
 GITHUB_TOKEN=$(bashio::config 'github_token')
-ENABLE_BUNDLED_MCP_SERVER=$(bashio::config 'enable_bundled_mcp_server')
-
-# Add the bundled MCP virtualenv to PATH so mcp-server-time is available.
-export PATH="/opt/mcp-venv/bin:${PATH}"
+MCP_CONFIG=$(bashio::config 'mcp_config')
 
 if bashio::var.is_empty "${GITHUB_TOKEN}"; then
     bashio::log.fatal "No GitHub token configured. Please set 'github_token' in the add-on options."
@@ -46,6 +43,20 @@ has_flag() {
     local help_text="${1}" flag="${2}"
     printf '%s\n' "${help_text}" | grep -qE "^[[:space:]]*--${flag}([[:space:]=]|$)"
 }
+validate_mcp_config_file() {
+    local config_file="${1}"
+
+    if [ ! -f "${config_file}" ]; then
+        return 1
+    fi
+
+    if command -v jq >/dev/null 2>&1; then
+        jq -e 'type == "object" and (.mcpServers | type == "object")' "${config_file}" >/dev/null 2>&1
+        return $?
+    fi
+
+    grep -qE '^[[:space:]]*\{' "${config_file}" && grep -qE '"mcpServers"[[:space:]]*:' "${config_file}"
+}
 COPILOT_ARGS=(--headless --port 8000)
 # --bind may only appear under the headless sub-command help.
 if has_flag "${COPILOT_HEADLESS_HELP}" bind || has_flag "${COPILOT_HELP}" bind; then
@@ -58,32 +69,47 @@ if has_flag "${COPILOT_HELP}" log-level; then
     COPILOT_ARGS+=(--log-level info)
 fi
 
-if bashio::var.true "${ENABLE_BUNDLED_MCP_SERVER}"; then
-    if ! command -v mcp-server-time >/dev/null 2>&1; then
-        bashio::log.warning "Bundled MCP server is enabled, but mcp-server-time is unavailable in this image. Continuing without bundled MCP tools."
+TRIMMED_MCP_CONFIG=$(printf '%s' "${MCP_CONFIG}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+if ! bashio::var.is_empty "${TRIMMED_MCP_CONFIG}"; then
     # Flag availability can vary by CLI version/help surface; check both outputs.
-    elif ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
-        bashio::log.warning "Bundled MCP server is enabled, but this Copilot CLI does not support --additional-mcp-config. Continuing without bundled MCP tools."
+    if ! has_flag "${COPILOT_HELP}" additional-mcp-config && ! has_flag "${COPILOT_HEADLESS_HELP}" additional-mcp-config; then
+        bashio::log.warning "Custom MCP config was provided, but this Copilot CLI does not support --additional-mcp-config. Continuing without MCP tools."
     else
-        # Configure a bundled MCP server and pass it to Copilot CLI so SDK sessions
-        # can use it automatically when connected through this bridge.
-        BUNDLED_MCP_CONFIG=/tmp/copilot-bundled-mcp-config.json
-        cat >"${BUNDLED_MCP_CONFIG}" <<'EOF'
-{
-  "mcpServers": {
-    "time": {
-      "type": "local",
-      "command": "mcp-server-time",
-      "args": [],
-      "tools": ["*"]
-    }
-  }
-}
-EOF
+        MCP_CONFIG_FILE=""
+        MCP_CONFIG_PATH=""
 
-        # The @ prefix tells Copilot CLI to treat the value as a file path.
-        COPILOT_ARGS+=(--additional-mcp-config "@${BUNDLED_MCP_CONFIG}")
-        bashio::log.info "Bundled MCP time server enabled."
+        # Accept either "/path/to/file.json" or "@/path/to/file.json".
+        if [[ "${TRIMMED_MCP_CONFIG}" == @* ]]; then
+            MCP_CONFIG_PATH="${TRIMMED_MCP_CONFIG#@}"
+        elif [[ "${TRIMMED_MCP_CONFIG}" != \{* ]]; then
+            MCP_CONFIG_PATH="${TRIMMED_MCP_CONFIG}"
+        fi
+
+        if [ -n "${MCP_CONFIG_PATH}" ]; then
+            if [ ! -f "${MCP_CONFIG_PATH}" ]; then
+                bashio::log.fatal "Invalid MCP config path '${MCP_CONFIG_PATH}': file does not exist."
+                exit 1
+            fi
+            if [ ! -r "${MCP_CONFIG_PATH}" ]; then
+                bashio::log.fatal "Invalid MCP config path '${MCP_CONFIG_PATH}': file is not readable."
+                exit 1
+            fi
+            MCP_CONFIG_FILE="${MCP_CONFIG_PATH}"
+            bashio::log.info "Using custom MCP config file: ${MCP_CONFIG_PATH}"
+        elif [[ "${TRIMMED_MCP_CONFIG}" == \{* ]]; then
+            CUSTOM_MCP_CONFIG_FILE=/tmp/copilot-custom-mcp-config.json
+            printf '%s\n' "${TRIMMED_MCP_CONFIG}" >"${CUSTOM_MCP_CONFIG_FILE}"
+            MCP_CONFIG_FILE="${CUSTOM_MCP_CONFIG_FILE}"
+            bashio::log.info "Using inline MCP config from add-on options."
+        fi
+
+        if ! validate_mcp_config_file "${MCP_CONFIG_FILE}"; then
+            bashio::log.fatal "Invalid mcp_config. JSON must be valid and include an object-valued 'mcpServers' property."
+            exit 1
+        fi
+
+        ADDITIONAL_MCP_CONFIG_VALUE="@${MCP_CONFIG_FILE}"
+        COPILOT_ARGS+=(--additional-mcp-config "${ADDITIONAL_MCP_CONFIG_VALUE}")
     fi
 fi
 
