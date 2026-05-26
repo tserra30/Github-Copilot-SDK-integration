@@ -52,7 +52,7 @@ validate_mcp_config_file() {
 
     if command -v jq >/dev/null 2>&1; then
         jq -e 'type == "object" and (.mcpServers | type == "object")' "${config_file}" >/dev/null 2>&1
-        return
+        return $?
     fi
 
     grep -qE '^[[:space:]]*\{' "${config_file}" && grep -qE '"mcpServers"[[:space:]]*:' "${config_file}"
