@@ -173,7 +173,7 @@ The Copilot CLI and SDK support two authentication methods:
 1. **PAT-based authentication** (what you use in the add-on's `github_token`):
    - Non-interactive (useful for Home Assistant add-ons)
    - Must be a valid token with Copilot permissions
-   - Will show "auth probe failed" warning in add-on logs — this warning is **expected** with PATs even when valid and does **not** prevent the server from working
+   - Will show "auth probe failed" warning in add-on logs — this warning is **expected** with PATs even with valid tokens and does **not** prevent the server from working
    - Check add-on server logs at runtime if authentication fails
 
 2. **Interactive login** (alternative for advanced users):
@@ -363,7 +363,7 @@ This error means the Copilot CLI (or SDK via the CLI) cannot authenticate with y
    - Common runtime errors:
      - "Invalid credentials": Token is invalid or lacks Copilot permissions
      - "Subscription required": Account does not have an active Copilot subscription
-     - "rate limit exceeded": Too many authentication attempts (wait before retrying)
+     - "rate limit exceeded": Too many authentication attempts (wait at least an hour before retrying)
 
 4. **Restart the add-on and integration**:
    - Restart the Bridge add-on from Settings → Add-ons
