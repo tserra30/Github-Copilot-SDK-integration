@@ -134,16 +134,71 @@ After setup you can adjust additional settings at any time via **Settings** → 
 
 > **SDK requirement (all modes)**: The `github-copilot-sdk` package is required whether you connect to a locally installed Copilot CLI or to the Bridge add-on via "Copilot CLI URL" — it is the Python client library the integration uses in both cases. On standard Linux systems (glibc ≥ 2.28), Home Assistant installs it automatically. On Home Assistant OS (glibc < 2.28), the default `0.1.32` wheel is incompatible — see the [SDK Installation](#sdk-installation) section for a workaround. When you leave "Copilot CLI URL" empty (local mode), you **must also** have the Copilot CLI binary installed and authenticated on the same host. The Bridge add-on already includes and manages its own CLI binary.
 
-### Getting a GitHub Token
+### GitHub Token & Authentication
 
-To use this integration, you need a GitHub personal access token that can authenticate the Copilot SDK:
-1. Ensure you have an active GitHub Copilot subscription
-2. Generate a PAT token from your [GitHub developer settings](https://github.com/settings/tokens)
-3. Add the necessary permissions (e.g., Copilot requests)
-4. Keep the token secure — never share it publicly
+#### When Do You Need a GitHub Token?
 
-> **Note — token and authentication when using the Bridge add-on**
-> When using the Bridge add-on (`cli_url` set), the GitHub token only needs to be configured in the **add-on** (as `GH_TOKEN`). The integration does **not** store or pass a token to the SDK in remote mode — the bridge server handles authentication entirely on its own. If you rotate or revoke the token, update it only in the add-on configuration.
+- **With Bridge add-on**: Configure token in the add-on's `github_token` field only (NOT in the integration)
+- **Local CLI mode** (no Bridge): Configure token in the integration's GitHub Token field
+
+#### Creating a GitHub Token
+
+Regardless of which mode you use, you need a valid GitHub Copilot subscription. To create a token:
+
+1. **Verify Copilot subscription**: Ensure you have an active [GitHub Copilot subscription](https://github.com/copilot) (free for verified students, otherwise paid)
+2. **Generate a token** from your [GitHub developer settings](https://github.com/settings/tokens)
+3. **Keep the token secure** — never share it publicly
+
+#### Token Types & Permissions
+
+**Classic PATs (Personal Access Tokens)**
+- Recommended approach for this integration
+- Create at: https://github.com/settings/tokens (classic)
+- Required scope: `copilot` (enables GitHub Copilot access)
+- If `copilot` scope is unavailable: Ensure your account has an active Copilot subscription and the PAT is created under your personal account (not an organization)
+- Note: Very old classic PATs may not have a `copilot` scope option — in this case, create a new token
+
+**Fine-grained PATs**
+- More restrictive but supported as an alternative
+- Create at: https://github.com/settings/personal-access-tokens/new
+- Required permissions:
+  - Repository permissions: None required (token can be "All repositories" or specific ones)
+  - Account permissions: None specifically named "Copilot", but the account must have an active Copilot subscription
+- Note: Fine-grained PATs have less flexibility — if authentication fails with fine-grained, try a classic PAT instead
+
+#### PAT Authentication vs Interactive Login
+
+The Copilot CLI and SDK support two authentication methods:
+
+1. **PAT-based authentication** (what you use in the add-on's `github_token`):
+   - Non-interactive (useful for Home Assistant add-ons)
+   - Must be a valid token with Copilot permissions
+   - Will show "auth probe failed" warning in add-on logs — this warning is **expected** with PATs even with valid tokens and does **not** prevent the server from working
+   - Check add-on server logs at runtime if authentication fails
+
+2. **Interactive login** (alternative for advanced users):
+   - Requires running `copilot auth login` in a shell
+   - Most reliable method (avoids PAT permission issues)
+   - Only practical for local CLI mode (not for Bridge add-on in Home Assistant OS)
+   - Good fallback if PAT-based auth fails
+
+#### Token and Authentication When Using the Bridge Add-on
+
+When you use the Bridge add-on with a CLI URL:
+- Configure your GitHub token **only** in the add-on's `github_token` field (Settings → Add-ons → GitHub Copilot Bridge → Configuration)
+- The integration does **not** ask for or store a token when using the Bridge add-on
+- The bridge server handles all authentication on its own
+- If you see "auth probe failed" warning: This is **expected** with token-only setups and does **not** mean the server will fail — the server will still attempt to authenticate at runtime
+- If you rotate or revoke the token: Update it **only** in the add-on configuration (not the integration)
+
+#### Token Requirements Checklist
+
+- [ ] GitHub account has an **active Copilot subscription** (free for verified students, paid otherwise)
+- [ ] Token created as a **classic PAT** with `copilot` scope (recommended), or a **fine-grained PAT** (fallback)
+- [ ] Token is **not expired** and has not been revoked
+- [ ] When using Bridge add-on: Token configured in add-on options (not integration)
+- [ ] When using local CLI: Token configured in integration (and CLI must be installed and in PATH)
+- [ ] If "auth probe failed" appears: Do NOT panic — this is expected with PATs, check server logs for the real error
 
 ## Usage
 
@@ -284,9 +339,63 @@ The Copilot CLI must be available **inside the Home Assistant Core container**, 
 
 ### Authentication Errors
 
-- Verify your GitHub token is valid and has Copilot permissions
-- Ensure your GitHub Copilot subscription is active
-- Try regenerating your personal access token
+#### "Authentication failed" or "GitHub Copilot CLI is not authenticated"
+
+This error means the Copilot CLI (or SDK via the CLI) cannot authenticate with your GitHub account.
+
+**If using the Bridge add-on:**
+
+1. **Check that the GitHub token is configured in the add-on**:
+   - Go to Settings → Add-ons → GitHub Copilot Bridge → Configuration
+   - Ensure `github_token` is set (not empty)
+   - Do **not** add a token to the integration config when using the Bridge add-on
+
+2. **Verify the token has Copilot permissions**:
+   - Check [GitHub Token Settings](https://github.com/settings/tokens) for your token
+   - For classic PATs: Ensure the `copilot` scope is enabled
+   - For fine-grained PATs: Ensure your GitHub account has an active Copilot subscription
+   - If `copilot` scope is missing from classic PATs: Your account or the token may be too old; create a new classic PAT
+
+3. **Check the add-on logs for the real error**:
+   - Go to Settings → Add-ons → GitHub Copilot Bridge → Logs
+   - Look for error messages after "Starting GitHub Copilot CLI server"
+   - "auth probe failed" warning is **expected** with PATs — keep reading the logs for the actual error
+   - Common runtime errors:
+     - "Invalid credentials": Token is invalid or lacks Copilot permissions
+     - "Subscription required": Account does not have an active Copilot subscription
+     - "rate limit exceeded": Too many authentication attempts (wait at least an hour before retrying)
+
+4. **Restart the add-on and integration**:
+   - Restart the Bridge add-on from Settings → Add-ons
+   - Then restart Home Assistant (or just reload the GitHub Copilot integration)
+   - Check the add-on logs again
+
+5. **Try a different token type**:
+   - If using a fine-grained PAT: Create a classic PAT with the `copilot` scope instead
+   - If the token is old: Generate a new token from https://github.com/settings/tokens
+
+**If using local Copilot CLI (no Bridge):**
+
+- Verify your GitHub token is configured in the integration setup
+- Ensure the Copilot CLI is installed and authenticated: Run `copilot auth login` in the Core container
+- Check that your CLI version is compatible with the SDK (see SDK Installation section)
+- Try re-running `copilot auth login` for interactive authentication (more reliable than PATs)
+
+#### About the "auth probe failed" Warning
+
+When using the Bridge add-on with a PAT token, you may see this warning in the add-on logs:
+```
+Copilot CLI auth probe failed. This can be expected with token-only setups. Proceeding to start the server; check server logs if authentication fails at runtime.
+```
+
+**This warning is expected and normal.** It does **not** mean authentication will fail at runtime. The warning appears because:
+- The authentication probe is a quick check that works well with interactive login but has limitations with token-only setups
+- The actual authentication happens later when the Copilot CLI server starts
+- If the token is valid, the server will authenticate successfully despite this warning
+
+**If you see this warning BUT the server works**: Your setup is correct; you can ignore the warning.
+
+**If you see this warning AND the server fails to work**: Check the add-on logs for the actual error message (usually appears after "Starting GitHub Copilot CLI server"). The real error will tell you what's wrong (invalid token, missing subscription, etc.).
 
 ### Connection Issues
 
