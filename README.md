@@ -385,7 +385,7 @@ This error means the Copilot CLI (or SDK via the CLI) cannot authenticate with y
 
 When using the Bridge add-on with a PAT token, you may see this warning in the add-on logs:
 ```
-Copilot CLI auth probe failed. This can be expected with token-only setups. Proceeding to start the server...
+Copilot CLI auth probe failed. This can be expected with token-only setups. Proceeding to start the server; check server logs if authentication fails at runtime.
 ```
 
 **This warning is expected and normal.** It does **not** mean authentication will fail at runtime. The warning appears because:
