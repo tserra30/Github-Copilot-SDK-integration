@@ -20,13 +20,13 @@ from .api import (
 from .const import (
     CONF_API_TOKEN,
     CONF_CLI_URL,
+    CONF_MCP_CONFIG,
     CONF_MODEL,
     CONF_TIMEOUT,
-    CONF_MCP_CONFIG,
     DEFAULT_CLI_URL,
+    DEFAULT_MCP_CONFIG,
     DEFAULT_MODEL,
     DEFAULT_TIMEOUT,
-    DEFAULT_MCP_CONFIG,
     DOMAIN,
     LEGACY_MODEL_MAP,
     LOGGER,
@@ -54,15 +54,14 @@ def _validate_mcp_config(mcp_config: str) -> bool:
     # Treat obvious file paths as valid (we can't verify add-on container files here)
     normalized = mcp_config.strip()
 
-    if (
-        any(sep in normalized for sep in (os.sep, "/", "\\"))
-        and not normalized.startswith("{")
-    ):
+    if any(
+        sep in normalized for sep in (os.sep, "/", "\\")
+    ) and not normalized.startswith("{"):
         return True
 
     try:
         parsed = json.loads(normalized)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, RecursionError):
         return False
 
     if not isinstance(parsed, dict):
@@ -320,7 +319,9 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
         current_cli_url = self.config_entry.data.get(CONF_CLI_URL, DEFAULT_CLI_URL)
 
         # Get current MCP config from config entry
-        current_mcp_config = self.config_entry.data.get(CONF_MCP_CONFIG, DEFAULT_MCP_CONFIG)
+        current_mcp_config = self.config_entry.data.get(
+            CONF_MCP_CONFIG, DEFAULT_MCP_CONFIG
+        )
 
         # Get current timeout from config entry
         current_timeout = float(
