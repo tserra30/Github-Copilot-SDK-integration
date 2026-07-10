@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import socket
@@ -107,15 +108,33 @@ class GitHubCopilotApiClient:
         *,
         client_options: dict[str, Any] | None = None,
         timeout: float = 120.0,
+        mcp_config: str = "",
     ) -> None:
         """Initialize GitHub Copilot SDK client wrapper."""
         self._model = model
         self._client_options = client_options or {}
         self._timeout = timeout
+        self._mcp_config = mcp_config
+        self._mcp_config_dict: dict[str, Any] | None = None
         self._client: copilot.CopilotClient | None = None
         self._sessions: dict[str, CopilotSessionContext] = {}
         self._session_lock = asyncio.Lock()
         self._client_lock = asyncio.Lock()
+
+        # Parse and validate MCP config if provided
+        if mcp_config.strip():
+            try:
+                self._mcp_config_dict = json.loads(mcp_config)
+                LOGGER.debug(
+                    "MCP configuration loaded with %d server(s)",
+                    len(self._mcp_config_dict.get("mcpServers", {})),
+                )
+            except json.JSONDecodeError as err:
+                LOGGER.warning(
+                    "Invalid MCP configuration JSON: %s",
+                    err,
+                )
+                self._mcp_config_dict = None
 
     async def async_test_connection(self) -> bool:
         """
@@ -144,12 +163,20 @@ class GitHubCopilotApiClient:
         async with self._session_lock:
             client = await self._ensure_client()
             try:
-                copilot_session = await client.create_session(
-                    {
-                        "model": self._model,
-                        "streaming": False,
-                    }
-                )
+                session_options: dict[str, Any] = {
+                    "model": self._model,
+                    "streaming": False,
+                }
+                if self._mcp_config_dict:
+                    session_options["mcp"] = self._mcp_config_dict
+                    LOGGER.debug(
+                        "Creating session with MCP enabled for %d server(s)",
+                        len(self._mcp_config_dict.get("mcpServers", {})),
+                    )
+                else:
+                    LOGGER.debug("Creating session without MCP")
+
+                copilot_session = await client.create_session(session_options)
             except TimeoutError as exception:
                 LOGGER.error(
                     "Timeout creating Copilot session with model '%s': %s - %s",

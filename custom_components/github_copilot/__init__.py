@@ -19,9 +19,11 @@ from .const import (
     CONF_CLI_URL,
     CONF_MODEL,
     CONF_TIMEOUT,
+    CONF_MCP_CONFIG,
     DEFAULT_CLI_URL,
     DEFAULT_MODEL,
     DEFAULT_TIMEOUT,
+    DEFAULT_MCP_CONFIG,
     DOMAIN,
     LEGACY_MODEL_MAP,
     LOGGER,
@@ -77,11 +79,14 @@ async def async_setup_entry(
             )
             model = new_model
 
+        mcp_config = entry.data.get(CONF_MCP_CONFIG, DEFAULT_MCP_CONFIG) or ""
+
         entry.runtime_data = GitHubCopilotData(
             client=GitHubCopilotApiClient(
                 model=model,
                 client_options=client_options,
                 timeout=float(entry.data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT)),
+                mcp_config=mcp_config,
             ),
             integration=async_get_loaded_integration(hass, entry.domain),
             coordinator=coordinator,
