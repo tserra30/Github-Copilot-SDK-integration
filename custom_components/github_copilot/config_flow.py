@@ -41,13 +41,10 @@ def _validate_cli_url(cli_url: str) -> bool:
 
 
 def _validate_mcp_config(mcp_config: str) -> bool:
-    """
-    Return True if mcp_config is a valid MCP configuration string or file path.
-
-    Accepts either a JSON string containing an object with an "mcpServers" key,
-    or a file path (contains a path separator) which will be resolved by the
-    add-on/container at runtime. Empty strings are considered valid (optional).
-    """
+    """Return True if mcp_config is a valid MCP configuration string or file path."""
+    # Accept either a JSON string containing an object with an "mcpServers" key,
+    # or a file path (contains a path separator) which is resolved at runtime.
+    # Empty strings are considered valid (optional).
     if not mcp_config or not mcp_config.strip():
         return True
 
