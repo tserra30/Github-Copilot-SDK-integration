@@ -138,8 +138,8 @@ After setup you can adjust additional settings at any time via **Settings** → 
 
 #### When Do You Need a GitHub Token?
 
-- **With Bridge add-on**: Configure token in the add-on's `github_token` field only (NOT in the integration)
-- **Local CLI mode** (no Bridge): Configure token in the integration's GitHub Token field
+- **With Bridge add-on**: Configure token in the add-on's `github_token` field (the integration token field is optional and ignored when a CLI URL is set)
+- **Local CLI mode** (no Bridge): Configure token in the integration's GitHub Token field (required)
 
 #### Creating a GitHub Token
 
