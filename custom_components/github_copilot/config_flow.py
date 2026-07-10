@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
-from urllib.parse import urlparse
 import json
 import os
+from typing import Any
+from urllib.parse import urlparse
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -41,7 +41,8 @@ def _validate_cli_url(cli_url: str) -> bool:
 
 
 def _validate_mcp_config(mcp_config: str) -> bool:
-    """Return True if mcp_config is a valid MCP configuration string or file path.
+    """
+    Return True if mcp_config is a valid MCP configuration string or file path.
 
     Accepts either a JSON string containing an object with an "mcpServers" key,
     or a file path (contains a path separator) which will be resolved by the
@@ -49,16 +50,24 @@ def _validate_mcp_config(mcp_config: str) -> bool:
     """
     if not mcp_config or not mcp_config.strip():
         return True
+
     # Treat obvious file paths as valid (we can't verify add-on container files here)
     normalized = mcp_config.strip()
-    if any(sep in normalized for sep in (os.sep, "/", "\\")) and not normalized.startswith("{"):
+
+    if (
+        any(sep in normalized for sep in (os.sep, "/", "\\"))
+        and not normalized.startswith("{")
+    ):
         return True
+
     try:
         parsed = json.loads(normalized)
-    except Exception:
+    except json.JSONDecodeError:
         return False
+
     if not isinstance(parsed, dict):
         return False
+
     # Prefer presence of 'mcpServers' key but don't be overly strict
     return "mcpServers" in parsed
 
