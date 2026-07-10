@@ -186,7 +186,7 @@ The Copilot CLI and SDK support two authentication methods:
 
 When you use the Bridge add-on with a CLI URL:
 - Configure your GitHub token **only** in the add-on's `github_token` field (Settings → Add-ons → GitHub Copilot Bridge → Configuration)
-- The integration does **not** ask for or store a token when using the Bridge add-on
+- The integration’s GitHub Token field is optional when using the Bridge add-on, but it is ignored and not persisted when a CLI URL is set
 - The bridge server handles all authentication on its own
 - If you see "auth probe failed" warning: This is **expected** with token-only setups and does **not** mean the server will fail — the server will still attempt to authenticate at runtime
 - If you rotate or revoke the token: Update it **only** in the add-on configuration (not the integration)
