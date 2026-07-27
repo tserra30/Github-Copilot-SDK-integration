@@ -78,7 +78,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> GitHubCopilotOptionsFlow:
         """Get the options flow for this handler."""
-        return GitHubCopilotOptionsFlow(config_entry)
+        return GitHubCopilotOptionsFlow()
 
     async def async_step_user(
         self,
@@ -268,10 +268,6 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
 class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for GitHub Copilot integration."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(
         self,
