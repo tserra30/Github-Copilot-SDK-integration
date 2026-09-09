@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.12.0] - 2026-09-09
+
+### Changed
+- Updated the pinned Copilot CLI to v1.0.83, matching the official Python SDK 1.0.13 runtime.
+- Configure MCP servers in the integration as well as any bridge configuration to explicitly authorize their tools. CLI built-in tools are not enabled by the integration.
+
 ## [v3.11.0] - 2026-05-21
 
 ### Changed

@@ -1,5 +1,5 @@
 name: GitHub Copilot Bridge
-version: "v3.11.0"
+version: "v3.12.0"
 slug: github_copilot_bridge
 description: >
   Runs the GitHub Copilot CLI in headless server mode so the GitHub Copilot

@@ -17,7 +17,7 @@ from .api import (
     GitHubCopilotApiClientCommunicationError,
     GitHubCopilotApiClientError,
 )
-from .const import LOGGER
+from .const import CONF_MCP_CONFIG, LOGGER
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -55,6 +55,10 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         self.entry = config_entry
         self._attr_name = "GitHub Copilot"
         self._attr_unique_id = f"{config_entry.entry_id}-conversation"
+        if (config_entry.data.get(CONF_MCP_CONFIG) or "").strip():
+            self._attr_supported_features = (
+                conversation.ConversationEntityFeature.CONTROL
+            )
         self.sessions: dict[str, CopilotSessionContext] = {}
         self._session_last_used: dict[str, float] = {}
         # Session timeout: 1 hour of inactivity
@@ -76,7 +80,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         session_ids = list(self.sessions.keys())
         for session_id in session_ids:
             try:
-                await client.async_end_session(session_id)
+                await client.async_end_session(self.sessions[session_id].session_id)
                 LOGGER.debug("Cleaned up session %s", session_id)
             except Exception as err:  # noqa: BLE001
                 LOGGER.error(
@@ -108,7 +112,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
 
         for session_id in expired_sessions:
             try:
-                await client.async_end_session(session_id)
+                await client.async_end_session(self.sessions[session_id].session_id)
                 LOGGER.debug("Expired session %s cleaned up", session_id)
             except Exception as err:  # noqa: BLE001
                 LOGGER.error(
@@ -134,7 +138,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
     ) -> conversation.ConversationResult:
         """Create an error response result."""
         intent_response = intent.IntentResponse(language=language)
-        intent_response.async_set_speech(message)
+        intent_response.async_set_error(intent.IntentResponseErrorCode.UNKNOWN, message)
         return conversation.ConversationResult(
             response=intent_response,
             conversation_id=conversation_id,

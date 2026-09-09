@@ -2,381 +2,133 @@
 
 ## Project Overview
 
-This repository contains a Home Assistant custom integration that brings GitHub Copilot AI capabilities to Home Assistant. It enables voice assistants and AI-powered tasks by implementing a conversation agent powered by the GitHub Copilot SDK.
+This repository contains a Home Assistant custom integration that implements a conversation agent using the GitHub Copilot SDK and CLI. Read `README.md` for setup and `CONTRIBUTING.md` for development and manual MCP validation.
 
 ## Technology Stack
 
-- **Platform**: Home Assistant Custom Integration
-- **Language**: Python 3.11+
-- **Key Dependencies**:
-  - `homeassistant` - Core Home Assistant framework
-  - `github-copilot-sdk` - Copilot SDK client library (uses Copilot CLI runtime)
-- **Development Tools**:
-  - Ruff for linting (configured in `.ruff.toml`)
-  - Dev container support (`.devcontainer.json`)
+- Python, using the version supported by the Home Assistant dependency
+- Home Assistant's config flow and conversation entity APIs
+- Upstream `github-copilot-sdk` from PyPI
+- Ruff, configured in `.ruff.toml`
+- Dev container configuration in `.devcontainer.json`
 
 ## Code Style and Standards
 
-### Python Standards
 - Use type hints with `from __future__ import annotations`
-- All I/O operations must be async/await
-- Follow Home Assistant coding conventions
-- Use Ruff for linting: `ruff check custom_components/github_copilot/`
-- Auto-fix issues with: `ruff check --fix custom_components/github_copilot/`
-
-### Naming Conventions
-- Use descriptive variable and function names
-- Class names: PascalCase
-- Functions and variables: snake_case
-- Constants: UPPER_SNAKE_CASE
-
-### Documentation
-- Add docstrings to all public functions and classes
-- Update README.md for user-facing changes
-- Keep README.md and CONTRIBUTING.md aligned for technical documentation
-- Keep code comments minimal but meaningful
-- **Maintain addon/CHANGELOG.md** when making changes to the bridge add-on (Dockerfile, run.sh, config.yaml, build.yaml)
-- Follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format for changelog entries
+- Use async/await for I/O; offload blocking filesystem operations from Home Assistant's event loop
+- Follow Home Assistant conventions and existing code patterns
+- Use PascalCase for classes, snake_case for functions and variables, and UPPER_SNAKE_CASE for constants
+- Add docstrings to public functions and classes
+- Keep comments minimal and meaningful
+- Preserve backward compatibility for existing integration configuration
+- Use custom API exceptions and user-friendly errors without revealing secrets
 
 ## Project Structure
 
-```
+```text
 custom_components/github_copilot/
 ├── __init__.py           # Integration entry point
 ├── api.py                # GitHub Copilot SDK client
 ├── config_flow.py        # Configuration UI flow
 ├── conversation.py       # Conversation agent implementation
-├── coordinator.py        # Data update coordinator
+├── coordinator.py       # Data update coordinator
 ├── const.py              # Constants and configuration
 └── data.py               # Data models
 
-addon/                    # GitHub Copilot Bridge Add-on
-├── Dockerfile            # Container image definition with Copilot CLI
-├── config.yaml           # Add-on metadata and configuration schema
-├── run.sh                # Server startup script with auth and retry logic
-├── build.yaml            # Multi-arch build configuration
-└── CHANGELOG.md          # Add-on version history and changes
+addon/
+├── Dockerfile           # Container image with pinned Copilot CLI
+├── config.yaml          # Add-on metadata and configuration schema
+├── run.sh               # Server startup, auth, and retry logic
+├── build.yaml           # Multi-architecture build configuration
+└── CHANGELOG.md         # Add-on version history
 ```
+
+## SDK and Runtime Conventions
+
+- Keep `custom_components/github_copilot/manifest.json` and `requirements.txt` SDK pins aligned
+- The current upstream SDK is `github-copilot-sdk==1.0.13`, with a universal `py3-none-any` wheel; do not restore patched wheels or the obsolete custom wheel-build workflow
+- Home Assistant Core's container is Alpine/musl, not an old-glibc environment
+- SDK 1.0.13 pins CLI 1.0.83; compatible upstream runtimes include musl and glibc amd64/arm64 builds
+- In local mode, let the SDK download and checksum its matching runtime when no installed or explicit executable is available; do not require manual binary installation or boot-time download hacks
+- In remote mode, use the keyword-argument SDK API and `RuntimeConnection.for_uri`; do not download or require a local CLI binary
+- A configured CLI URL and a local GitHub token are mutually exclusive SDK inputs: the bridge handles its own GitHub authentication
+- Use a GitHub fine-grained PAT with **Account permissions → Copilot Requests → Read and write**; do not recommend classic PATs or a nonexistent classic `copilot` scope
+- Keep connection validation in `async_test_connection()` and use the SDK rather than mimicking a raw Copilot API
+
+## MCP Configuration and Authorization
+
+- The integration's MCP field accepts inline JSON containing `mcpServers` or a Home Assistant-readable JSON file path, optionally prefixed with `@`
+- Validate MCP configuration in both setup and options flows; load files off the event loop and report invalid JSON, unreadable files, and invalid server definitions instead of silently accepting or ignoring them
+- Normalize legacy transport and working-directory aliases; canonical remote definitions use `type: "http"` or `"sse"`, `url`, `tools`, and optional `headers`
+- Pass validated definitions through the SDK session's `mcp_servers` keyword argument
+- Register a permission callback that approves only configured MCP servers and their allowed tools
+- Preserve `tools: ["*"]` or explicit tool-name allowlists; deny unknown or unconfigured servers/tools
+- Disable built-in CLI tools; never replace the permission policy with blanket approval
+- Require MCP configuration in the **integration field even in bridge mode**; add-on `mcp_config` alone does not authorize tools for this integration
+- Treat MCP headers and configuration files as credentials; never log or commit tokens
+
+### Home Assistant MCP Validation
+
+Use a current official Home Assistant Container or Home Assistant OS release. Integration metadata requires Home Assistant 2025.2.4 or later; an older 2024 development baseline does not contain the built-in MCP server.
+
+The upgrade validation environment is official Home Assistant Container **2026.9.1** on Docker Engine in Ubuntu WSL2, with the built add-on image running as an external CLI server. There is no Supervisor in Home Assistant Container: do not present this as Home Assistant OS or full Supervisor add-on lifecycle validation. Record actual outcomes separately from the environment description.
+
+Follow the checklist in `CONTRIBUTING.md`: add **Model Context Protocol Server**, enable the **Assist API**, expose a safe test helper, and configure `http://homeassistant:8123/api/mcp` from the bridge. Other deployments need an address reachable from the CLI runtime. Use a **Home Assistant long-lived token**, separate from the GitHub PAT, in its Bearer header. No external MCP server or proxy is needed.
+
+Verify actual entity state changes, not just model text claiming success. Check invalid configuration and permission-denial paths as well as normal tool calls. Record what was actually tested without exposing credentials.
 
 ## Key Components
 
-### SDK Client (`api.py`)
-- All methods should be async
-- Use the GitHub Copilot SDK client
-- Implement proper error handling with custom exceptions
-- Include connection testing in `async_test_connection()`
-
 ### Conversation Agent (`conversation.py`)
-- Extends Home Assistant's `ConversationEntity`
-- Implements `async_process()` for message handling
-- Maintains conversation history within sessions
-- Handles errors gracefully with user-friendly messages
+
+- Extend Home Assistant's `ConversationEntity` and implement `async_process()`
+- Maintain session conversation history appropriately
+- Respect response timeouts and API rate limits
+- Return user-friendly errors
 
 ### Configuration Flow (`config_flow.py`)
-- Validates credentials during setup
-- Provides clear error messages for users
-- Supports optional configuration parameters (model, cli_url)
-- Follows Home Assistant's config flow patterns
-- **cli_url parameter**: Enables connection to remote Copilot CLI server (bridge add-on)
-- **Mutual exclusion**: When `cli_url` is provided, `github_token` is NOT passed to SDK (remote server handles auth)
+
+- Validate credentials and configuration during setup
+- Preserve Home Assistant's config flow patterns
+- Support model, CLI URL, and MCP configuration options
+- Keep the GitHub token optional for remote bridge connections
+- Default new model selections to `auto`; preserve existing saved selections without silent migration
+- Allow custom model IDs during setup and fetch live available model IDs for the options selector
+- For an obsolete ID rejected with `Model not available` (for example `gpt-4.1`), direct users to choose a supported model through **Configure** instead of silently changing their choice
 
 ### Bridge Add-on (`addon/`)
-- **Purpose**: Runs GitHub Copilot CLI as a headless server for Home Assistant OS users
-- **Dockerfile**:
-  - Uses Debian Bullseye base for native glibc support (required by Copilot CLI)
-  - Pins Copilot CLI version (currently v1.0.13) with SHA256 verification
-  - Supports amd64 and aarch64 architectures
-- **run.sh**:
-  - Authenticates CLI via GH_TOKEN environment variable
-  - Implements feature detection for optional CLI flags (--bind, --no-auto-update, --log-level)
-  - Includes retry mechanism (up to 5 attempts with 5-second delays)
-  - Hardened auth probe with timeout protection
-- **Current version**: v3.8.3
-- **Server port**: 8000 (internal Supervisor network only)
-- **When to update**: Bump version in `config.yaml` when making significant changes to Dockerfile or run.sh
 
-## Recent Important Changes (March-April 2026)
+- Run the CLI as a headless server on port 8000 on the internal Supervisor network
+- Keep the CLI version and architecture-specific SHA256 checksums compatible with the SDK
+- Preserve amd64/aarch64 support, token-based auth, feature detection, and bounded startup retries
+- Bump `addon/config.yaml` for significant runtime changes and maintain `addon/CHANGELOG.md` using Keep a Changelog format
+- Add-on `mcp_config` remains available to other bridge clients; do not confuse it with integration-level tool authorization
 
-### SDK Installation Fix (Current)
-- **Integration**: Now uses patched `github-copilot-sdk==0.1.22+ha` wheel from repository
-- **Fixes**: Home Assistant OS installation failure due to manylinux_2_28 wheel incompatibility
-- **Installation**: Automatic via URL requirement in `manifest.json` pointing to `wheels/github_copilot_sdk-0.1.22+ha-py3-none-any.whl`
-- **Benefits**:
-  - Universal `py3-none-any` wheel works on all platforms including HA OS
-  - Protocol v3 support (patched from 0.1.22 source)
-  - No manual installation required
-  - No glibc version constraints
+## Development and Validation
 
-### SDK Version and HA OS Compatibility
-- **Problem**: SDK 0.1.23+ only ship manylinux_2_28 wheels requiring glibc ≥ 2.28; Home Assistant OS cannot install these
-- **Solution**: Integration now uses patched 0.1.22+ha wheel with protocol v3 support from repository
-- **Build Process**: `.github/workflows/build-sdk.yml` automatically builds patched wheel
-- **Stock SDK 0.1.22**: Supports protocol v2 only; do **not** use stock 0.1.22 with CLI v1.0.13
+For a new development environment, install dependencies from the repository root:
 
-### Protocol v3 Support (PR #105)
-- **Integration**: SDK updated to support protocol v3
-- **Add-on**: Updated Copilot CLI from v1.0.9 to v1.0.13
-- **Impact**: CLI v1.0.13 uses protocol v3
-- **Backward compatibility**: Patched SDK supports both protocol v2 and v3
-
-### CLI URL and Token Mutual Exclusion (PR #103)
-- **Bug fixed**: SDK raised ValueError when both `github_token` and `cli_url` were provided
-- **Solution**: `client_options` now uses mutual exclusion
-  - Remote mode (cli_url): Server manages own auth, no token passed to SDK
-  - Local mode (no cli_url): Token required and passed to SDK
-- **Config flow**: Token is now optional when using bridge add-on
-- **Impact**: Bridge add-on users no longer hit "Invalid Copilot client configuration" error
-
-### Bridge Add-on Stability Improvements (PR #97)
-- Enhanced authentication probe with timeout protection
-- Improved feature detection for CLI flags across versions
-- Better error handling and retry logic
-
-### Base Image Migration (PR #74, #69)
-- Migrated from Alpine (musl) to Debian Bullseye (glibc)
-- **Reason**: Copilot CLI requires glibc, Alpine caused crashes
-- **Result**: Improved stability and native binary support
-
-### Home Assistant OS Compatibility (PR #82, #98)
-- Integration now uses patched SDK 0.1.22+ha wheel from repository (universal, protocol v3)
-- Auto-installed from `manifest.json` URL requirement
-- Bridge add-on is still recommended for HA OS users (eliminates need for local CLI binary)
-
-## Development Workflow
-
-### Setup
-1. Use the provided dev container for consistent environment:
-   - Image: `mcr.microsoft.com/devcontainers/python:3.13`
-   - Auto-runs: `scripts/setup` post-create (installs dependencies)
-   - Port 8123 forwarded for Home Assistant access
-2. Manual setup: `python3 -m pip install -r requirements.txt` (takes ~60-90 seconds)
-3. Configuration is in `config/configuration.yaml`
-4. Test changes in the standalone Home Assistant instance
-
-### Build and Validation Commands
-
-**IMPORTANT: Always run commands in this exact order to avoid errors:**
-
-1. **Install dependencies** (required first):
-   ```bash
-   python3 -m pip install -r requirements.txt
-   ```
-   - Takes 60-90 seconds on first run
-   - Required before any other commands
-   - Run from repository root
-
-2. **Lint code** (required before commits):
-   ```bash
-   python3 -m ruff check .
-   ```
-   - Takes 1-2 seconds
-   - Must pass with no errors before committing
-   - Auto-fix with: `python3 -m ruff check --fix .`
-
-3. **Check formatting** (required before commits):
-   ```bash
-   python3 -m ruff format . --check
-   ```
-   - Takes <1 second
-   - Must show "files already formatted"
-   - Auto-fix with: `python3 -m ruff format .`
-
-4. **Run Home Assistant validation** (CI requirement):
-   - Hassfest validation checks integration manifest, structure, and dependencies
-   - HACS validation ensures repository meets HACS requirements
-   - These run automatically in CI - no local command available
-
-### CI/CD Workflows
-
-The repository uses three GitHub Actions workflows:
-
-1. **Lint workflow** (`.github/workflows/lint.yml`):
-   - Triggers: Push/PR to main branch
-   - Python version: 3.13.2
-   - Checks: `ruff check .` and `ruff format . --check`
-   - Must pass before merge
-
-2. **Validate workflow** (`.github/workflows/validate.yml`):
-   - Triggers: Push/PR to main, daily schedule, manual
-   - Runs hassfest validation (Home Assistant structure check)
-   - Runs HACS validation (custom integration requirements)
-   - Must pass before merge
-
-3. **CodeQL workflow** (`.github/workflows/codeql.yml`):
-   - Runs security analysis
-   - Scans for vulnerabilities
-
-### Before Committing - Required Checks
-1. Run linter: `python3 -m ruff check .` (must show "All checks passed!")
-2. Check formatting: `python3 -m ruff format . --check` (must show "files already formatted")
-3. Test in a Home Assistant instance (manual testing)
-4. Verify configuration flow works
-5. Test conversation agent functionality
-6. Check error handling
-
-### Testing Guidelines
-- **No automated tests exist** - all testing is manual
-- Test the integration in a real Home Assistant environment
-- Verify all user-facing features work correctly
-- Test error conditions and edge cases
-- Ensure API rate limiting is handled properly
-- Test with different models (GPT-4o, Claude 3.5 Sonnet, etc.)
-
-## Common Patterns
-
-### Async Operations
-```python
-from __future__ import annotations
-
-import copilot
-
-
-class GitHubCopilotApiClient:
-    def __init__(self, client_options: dict[str, str], ...) -> None:
-        self._client = copilot.CopilotClient(client_options)
-
-    async def async_test_connection(self) -> bool:
-        await self._client.start()
-        return True
+```bash
+python -m pip install -r requirements.txt
 ```
 
-### Error Handling
-```python
-from .api import (
-    GitHubCopilotApiClientError,
-    GitHubCopilotApiClientAuthenticationError,
-    GitHubCopilotApiClientCommunicationError,
-)
+Run the standard-library regression tests before lint and format checks for code changes. The tests use `unittest`, not an external runner:
 
-try:
-    result = await api_call()
-except GitHubCopilotApiClientAuthenticationError as exception:
-    LOGGER.warning(exception)
-    errors["base"] = "auth"
-except GitHubCopilotApiClientCommunicationError as exception:
-    LOGGER.error(exception)
-    errors["base"] = "connection"
-except GitHubCopilotApiClientError as exception:
-    LOGGER.exception(exception)
-    errors["base"] = "unknown"
+```bash
+python3 -m unittest discover -s tests -v
+python -m ruff check .
+python -m ruff format . --check
 ```
 
-### Configuration Validation
-```python
-async def async_step_user(self, user_input=None):
-    """Handle user step."""
-    _errors = {}
-    if user_input is not None:
-        try:
-            await self._test_credentials(
-                api_token=user_input[CONF_API_TOKEN],
-                model=user_input.get(CONF_MODEL, DEFAULT_MODEL),
-            )
-        except GitHubCopilotApiClientAuthenticationError as exception:
-            LOGGER.warning(exception)
-            _errors["base"] = "auth"
-        except GitHubCopilotApiClientCommunicationError as exception:
-            LOGGER.error(exception)
-            _errors["base"] = "connection"
-```
+Use `python -m ruff` rather than relying on a global `ruff` executable. `scripts/setup` installs dependencies; `scripts/lint` formats and auto-fixes in the dev environment. The development Home Assistant configuration is `config/configuration.yaml`.
 
-## Important Notes
+The workflows in `.github/workflows/` are authoritative for CI: `lint.yml` checks Ruff, `validate.yml` runs hassfest and HACS validation, and `codeql.yml` runs CodeQL. Follow `CONTRIBUTING.md` for manual configuration, conversation, and MCP checks. Do not claim runtime testing passed based on lint alone.
 
-- This integration uses the GitHub Copilot SDK, not a raw API mimic
-- Supports multiple models: GPT-4o, GPT-4o-mini, GPT-4, GPT-4 Turbo, GPT-3.5 Turbo, o3-mini, o1, o1-mini, Claude 3.5 Sonnet
-- Conversation history is stored in memory (not persisted)
-- API rate limits must be respected
-- All user data sent to GitHub Copilot follows GitHub's privacy policy
+## Documentation and Security
 
-## Feature Development
-
-When adding new features:
-1. Check if it aligns with Home Assistant's conversation agent framework
-2. Ensure backward compatibility with existing configurations
-3. Add appropriate error handling
-4. Update documentation (README.md, CONTRIBUTING.md)
-5. Consider API rate limits and token usage
-
-## Security Considerations
-
-- Never commit API tokens or credentials
-- Validate all user inputs in config flow
-- Handle API errors gracefully without exposing sensitive data
-- Follow Home Assistant's security best practices
-- Keep dependencies up to date
-
-## Common Issues and Workarounds
-
-### Copilot CLI Not Found
-- **Issue**: Integration fails with "Unable to connect to Copilot CLI"
-- **Cause**: GitHub Copilot CLI not installed or not in PATH
-- **Solution**:
-  1. Install CLI from https://docs.github.com/copilot/cli
-  2. Ensure it's executable and in PATH: `which copilot` or `copilot --version`
-  3. Authenticate: `copilot auth login`
-  4. For Home Assistant OS: CLI must be in Core container, not SSH add-on
-  5. Set `COPILOT_CLI_PATH` env var if CLI is in non-standard location
-
-### Home Assistant OS Specific Issues
-- **Issue**: CLI works in SSH add-on but not in integration
-- **Cause**: SSH add-on is separate from Core container
-- **Solution**: Install CLI inside Core container (`docker exec -it homeassistant /bin/sh`)
-- Persist auth with: `mkdir -p /config/.gh_config && export GH_CONFIG_DIR=/config/.gh_config`
-- Use automation to reinstall CLI on boot (example in README.md)
-
-### Import/Module Errors
-- **Issue**: `ModuleNotFoundError` or import errors
-- **Cause**: Dependencies not installed
-- **Solution**: Run `python3 -m pip install -r requirements.txt` (takes 60-90 seconds)
-
-### Ruff Command Not Found
-- **Issue**: `bash: ruff: command not found`
-- **Cause**: Ruff not installed or not using python module
-- **Solution**: Use `python3 -m ruff` instead of `ruff` command
-
-## File Locations
-
-### Root Directory Files
-- `.ruff.toml` - Ruff linter configuration
-- `requirements.txt` - Python dependencies (colorlog, github-copilot-sdk==0.1.32, homeassistant==2024.12.3, ruff==0.15.8)
-- `hacs.json` - HACS integration metadata
-- `.devcontainer.json` - Dev container configuration
-- `README.md` - User documentation
-- `CONTRIBUTING.md` - Contribution guidelines
-- `SECURITY.md` - Security policy
-
-### Add-on Directory Files
-- `addon/Dockerfile` - Container image with Copilot CLI v1.0.13
-- `addon/config.yaml` - Add-on metadata, version v3.8.3
-- `addon/run.sh` - Server startup script with auth and retry logic
-- `addon/build.yaml` - Multi-architecture build configuration
-- `addon/CHANGELOG.md` - Add-on version history (maintain when updating add-on)
-
-### GitHub Workflows
-- `.github/workflows/lint.yml` - Linting checks (ruff)
-- `.github/workflows/validate.yml` - Hassfest and HACS validation
-- `.github/workflows/codeql.yml` - Security scanning
-
-### Scripts
-- `scripts/setup` - Install dependencies (`python3 -m pip install --requirement requirements.txt`)
-- `scripts/lint` - Format and fix code (`ruff format . && ruff check . --fix`) - Note: This script uses `ruff` directly as it's in the dev environment PATH
-
-## Resources
-
-- [Home Assistant Developer Documentation](https://developers.home-assistant.io/)
-- [Integration Blueprint](https://github.com/ludeeus/integration_blueprint)
-- Repository issues: https://github.com/tserra30/Github-Copilot-SDK-integration/issues
-- Contributing guidelines: See CONTRIBUTING.md
-
-## Instructions for Coding Agents
-
-Always check documentation surrounding this repo.
-Make sure to check all files before working and after.
-
-When working with this codebase:
-1. Always run `python3 -m pip install -r requirements.txt` first if starting fresh
-2. Always lint with `python3 -m ruff check .` before committing
-3. Use `python3 -m ruff` not `ruff` command directly (except in scripts/lint which uses `ruff` directly)
-4. All code must be async - use `async`/`await` for I/O operations
-5. Follow Home Assistant patterns - check existing files for examples
-6. Test manually in Home Assistant - no automated tests exist
+- Keep `README.md` and `CONTRIBUTING.md` aligned with user-facing and development changes
+- Update translations when changing UI strings
+- Maintain the add-on changelog for bridge changes
+- Never commit API tokens, authorization headers, or other credentials
+- Validate user input and avoid exposing sensitive data in error messages
+- See `SECURITY.md` for security reporting and [Home Assistant developer documentation](https://developers.home-assistant.io/) for framework conventions

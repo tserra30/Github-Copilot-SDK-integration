@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import shutil
 import socket
@@ -17,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     import copilot as copilot  # noqa: PLC0414 — only for type annotations
+    from copilot.session import PermissionInvocation, PermissionRequest
 
 try:
     import copilot  # type: ignore[no-redef]
@@ -25,13 +25,13 @@ try:
 except ImportError:
     _COPILOT_SDK_AVAILABLE = False
 
-from .const import LOGGER
+from .const import DEFAULT_MODEL, LOGGER
+from .mcp import async_load_mcp_config
 
 _SDK_INSTALL_HINT = (
     "The github-copilot-sdk package is required but is not installed. "
-    "Install it with: pip install 'github-copilot-sdk==0.1.32'\n"
-    "On Home Assistant OS (glibc < 2.28) use the universal-wheel build instead: "
-    "pip install 'github-copilot-sdk==0.1.22'"
+    "Install it with: pip install 'github-copilot-sdk==1.0.13'. "
+    "The official universal wheel supports Home Assistant OS."
 )
 
 # Timeout (seconds) for best-effort session destroy() calls made during error cleanup.
@@ -104,7 +104,7 @@ class GitHubCopilotApiClient:
 
     def __init__(
         self,
-        model: str = "gpt-4o",
+        model: str = DEFAULT_MODEL,
         *,
         client_options: dict[str, Any] | None = None,
         timeout: float = 120.0,
@@ -115,26 +115,50 @@ class GitHubCopilotApiClient:
         self._client_options = client_options or {}
         self._timeout = timeout
         self._mcp_config = mcp_config
-        self._mcp_config_dict: dict[str, Any] | None = None
+        self._mcp_servers: dict[str, copilot.MCPServerConfig] = {}
         self._client: copilot.CopilotClient | None = None
         self._sessions: dict[str, CopilotSessionContext] = {}
         self._session_lock = asyncio.Lock()
         self._client_lock = asyncio.Lock()
 
-        # Parse and validate MCP config if provided
-        if mcp_config.strip():
-            try:
-                self._mcp_config_dict = json.loads(mcp_config)
-                LOGGER.debug(
-                    "MCP configuration loaded with %d server(s)",
-                    len(self._mcp_config_dict.get("mcpServers", {})),
-                )
-            except json.JSONDecodeError as err:
-                LOGGER.warning(
-                    "Invalid MCP configuration JSON: %s",
-                    err,
-                )
-                self._mcp_config_dict = None
+    async def _load_mcp_servers(self) -> None:
+        """Load inline or HA-local file configuration outside the event loop."""
+        try:
+            self._mcp_servers = await async_load_mcp_config(self._mcp_config)
+        except ValueError as exception:
+            msg = (
+                "Invalid MCP configuration. Provide valid mcpServers JSON or a "
+                "readable JSON file inside Home Assistant, not only the bridge."
+            )
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientError(msg) from exception
+
+    def _handle_permission_request(
+        self,
+        request: PermissionRequest,
+        invocation: PermissionInvocation,
+    ) -> copilot.PermissionRequestResult:
+        """Approve only explicitly configured MCP tools, never CLI host access."""
+        from copilot.rpc import (  # noqa: PLC0415
+            PermissionDecisionApproveOnce,
+            PermissionDecisionUserNotAvailable,
+        )
+        from copilot.session_events import PermissionRequestMcp  # noqa: PLC0415
+
+        if (
+            not invocation.get("managed_settings_enabled", False)
+            and not getattr(request, "managed_approval_required", False)
+            and isinstance(request, PermissionRequestMcp)
+        ):
+            server = self._mcp_servers.get(request.server_name)
+            if server is not None:
+                tools = server.get("tools", [])
+                if "*" in tools or request.tool_name in tools:
+                    return PermissionDecisionApproveOnce()
+        LOGGER.warning(
+            "Denied a Copilot tool permission outside configured MCP access."
+        )
+        return PermissionDecisionUserNotAvailable()
 
     async def async_test_connection(self) -> bool:
         """
@@ -163,20 +187,24 @@ class GitHubCopilotApiClient:
         async with self._session_lock:
             client = await self._ensure_client()
             try:
-                session_options: dict[str, Any] = {
-                    "model": self._model,
-                    "streaming": False,
-                }
-                if self._mcp_config_dict:
-                    session_options["mcp"] = self._mcp_config_dict
-                    LOGGER.debug(
-                        "Creating session with MCP enabled for %d server(s)",
-                        len(self._mcp_config_dict.get("mcpServers", {})),
-                    )
-                else:
-                    LOGGER.debug("Creating session without MCP")
-
-                copilot_session = await client.create_session(session_options)
+                copilot_session = await client.create_session(
+                    model=self._model,
+                    streaming=False,
+                    mcp_servers=self._mcp_servers,
+                    on_permission_request=self._handle_permission_request,
+                    available_tools=copilot.ToolSet().add_mcp("*"),
+                    disabled_mcp_servers=["github-mcp-server"],
+                    system_message={
+                        "mode": "replace",
+                        "content": (
+                            "You are a Home Assistant conversation assistant. "
+                            "Use the configured MCP tools for current home state "
+                            "and device actions. Never claim an action succeeded "
+                            "unless its tool result confirms it. If a tool is "
+                            "unavailable or denied, explain that clearly."
+                        ),
+                    },
+                )
             except TimeoutError as exception:
                 LOGGER.error(
                     "Timeout creating Copilot session with model '%s': %s - %s",
@@ -235,7 +263,9 @@ class GitHubCopilotApiClient:
         if not session:
             return
         try:
-            await session.copilot_session.destroy()
+            await session.copilot_session.disconnect()
+            if self._client:
+                await self._client.delete_session(session.session_id)
         except Exception as exception:
             LOGGER.error(
                 "Failed to destroy Copilot session: %s - %s",
@@ -264,9 +294,14 @@ class GitHubCopilotApiClient:
 
         try:
             await asyncio.wait_for(
-                session.copilot_session.destroy(),
+                session.copilot_session.disconnect(),
                 timeout=_SESSION_DESTROY_TIMEOUT,
             )
+            if self._client:
+                await asyncio.wait_for(
+                    self._client.delete_session(session.session_id),
+                    timeout=_SESSION_DESTROY_TIMEOUT,
+                )
         except Exception as exc:  # noqa: BLE001
             LOGGER.warning(
                 "Best-effort destroy of broken session %s failed (%s: %s); "
@@ -292,7 +327,7 @@ class GitHubCopilotApiClient:
 
         try:
             event = await session.copilot_session.send_and_wait(
-                {"prompt": prompt}, timeout=self._timeout
+                prompt, timeout=self._timeout
             )
         except TimeoutError as exception:
             LOGGER.error(
@@ -544,13 +579,16 @@ class GitHubCopilotApiClient:
                 )
                 raise GitHubCopilotApiClientError(_SDK_INSTALL_HINT)
 
-            # Skip local CLI check when a remote CLI URL is configured
-            using_remote_cli = bool(self._client_options.get("cli_url", "").strip())
-
-            if not using_remote_cli:
-                # First check if CLI is installed (only needed for local mode)
-                cli_status = self._check_cli_installed()
-                if not cli_status.cli_installed:
+            await self._load_mcp_servers()
+            cli_url = self._client_options.get("cli_url", "").strip()
+            if cli_url:
+                connection = copilot.RuntimeConnection.for_uri(cli_url)
+            else:
+                cli_status = await asyncio.to_thread(self._check_cli_installed)
+                explicit_path = self._client_options.get("cli_path") or os.environ.get(
+                    "COPILOT_CLI_PATH"
+                )
+                if explicit_path and not cli_status.cli_installed:
                     LOGGER.error(
                         "GitHub Copilot CLI not found. %s",
                         cli_status.to_user_message(),
@@ -561,10 +599,21 @@ class GitHubCopilotApiClient:
                         "and ensure it's in your PATH."
                     )
                     raise GitHubCopilotApiClientCommunicationError(msg)
+                connection = copilot.RuntimeConnection.for_stdio(
+                    path=cli_status.cli_path,
+                )
 
             # Initialize the Copilot client
             try:
-                client = copilot.CopilotClient(self._client_options)
+                # The SDK constructor can download its checksummed CLI runtime.
+                client = await asyncio.to_thread(
+                    copilot.CopilotClient,
+                    connection=connection,
+                    github_token=(
+                        None if cli_url else self._client_options.get("github_token")
+                    ),
+                    use_logged_in_user=None if cli_url else False,
+                )
             except (TypeError, ValueError) as exception:
                 LOGGER.error(
                     "Invalid client configuration: %s - %s",
