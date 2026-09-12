@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import os
 from typing import Any
 from urllib.parse import urlparse
 
@@ -32,6 +30,7 @@ from .const import (
     LOGGER,
     SUPPORTED_MODELS,
 )
+from .mcp import async_load_mcp_config
 
 
 def _validate_cli_url(cli_url: str) -> bool:
@@ -40,32 +39,13 @@ def _validate_cli_url(cli_url: str) -> bool:
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
 
 
-def _validate_mcp_config(mcp_config: str) -> bool:
+async def _async_validate_mcp_config(mcp_config: str) -> bool:
     """Return True if mcp_config is a valid MCP configuration string or file path."""
-    # Accept either a JSON string containing an object with an "mcpServers" key,
-    # or a file path (contains a path separator) which is resolved at runtime.
-    # Empty strings are considered valid (optional).
-    if not mcp_config or not mcp_config.strip():
-        return True
-
-    # Treat obvious file paths as valid (we can't verify add-on container files here)
-    normalized = mcp_config.strip()
-
-    if any(
-        sep in normalized for sep in (os.sep, "/", "\\")
-    ) and not normalized.startswith("{"):
-        return True
-
     try:
-        parsed = json.loads(normalized)
-    except (json.JSONDecodeError, RecursionError):
+        await async_load_mcp_config(mcp_config)
+    except ValueError:
         return False
-
-    if not isinstance(parsed, dict):
-        return False
-
-    # Prefer presence of 'mcpServers' key but don't be overly strict
-    return "mcpServers" in parsed
+    return True
 
 
 class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -75,7 +55,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,
+        config_entry: config_entries.ConfigEntry,  # noqa: ARG004
     ) -> GitHubCopilotOptionsFlow:
         """Get the options flow for this handler."""
         return GitHubCopilotOptionsFlow()
@@ -100,7 +80,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 _errors[CONF_API_TOKEN] = "token_required"
 
             # Validate MCP config if provided
-            if mcp_config and not _validate_mcp_config(mcp_config):
+            if mcp_config and not await _async_validate_mcp_config(mcp_config):
                 _errors[CONF_MCP_CONFIG] = "invalid_mcp"
 
             if not _errors:
@@ -175,6 +155,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                             selector.SelectSelectorConfig(
                                 options=SUPPORTED_MODELS,
                                 mode=selector.SelectSelectorMode.DROPDOWN,
+                                custom_value=True,
                             ),
                         ),
                         vol.Optional(
@@ -190,7 +171,7 @@ class GitHubCopilotFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                             default=DEFAULT_MCP_CONFIG,
                         ): selector.TextSelector(
                             selector.TextSelectorConfig(
-                                type=selector.TextSelectorType.TEXT,
+                                type=selector.TextSelectorType.PASSWORD,
                             ),
                         ),
                     },
@@ -284,7 +265,7 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
                 _errors[CONF_CLI_URL] = "invalid_url"
 
             # Validate MCP config if provided
-            if mcp_config and not _validate_mcp_config(mcp_config):
+            if mcp_config and not await _async_validate_mcp_config(mcp_config):
                 _errors[CONF_MCP_CONFIG] = "invalid_mcp"
 
             if not _errors:
@@ -365,7 +346,7 @@ class GitHubCopilotOptionsFlow(config_entries.OptionsFlow):
                         default=current_mcp_config,
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.TEXT,
+                            type=selector.TextSelectorType.PASSWORD,
                         ),
                     ),
                     vol.Optional(

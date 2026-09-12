@@ -412,7 +412,7 @@
                 <div class="feature-card">
                     <div class="icon">🔧</div>
                     <strong>Configurable Models</strong>
-                    <p>Choose from GPT-4o, o1, Claude 3.5 Sonnet, and many more.</p>
+                    <p>Use automatic model selection or choose a model from the runtime's live catalog.</p>
                 </div>
                 <div class="feature-card">
                     <div class="icon">💬</div>
@@ -435,6 +435,7 @@
         <!-- ── Installation ── -->
         <section id="installation">
             <h2>Installation</h2>
+            <p>Requires Home Assistant 2025.2.4 or later. Use a current stable release for Home Assistant's built-in MCP server.</p>
 
             <h3>Via HACS (Recommended)</h3>
             <ol>
@@ -456,11 +457,11 @@
         <!-- ── Bridge Add-on ── -->
         <section id="bridge-addon">
             <h2>GitHub Copilot Bridge Add-on</h2>
-            <p>Installing the Copilot CLI inside the Home Assistant Core container can be difficult on Home Assistant OS. The <strong>GitHub Copilot Bridge</strong> add-on solves this by running the CLI in a dedicated container that the integration connects to over the internal network.</p>
+            <p>The <strong>GitHub Copilot Bridge</strong> add-on runs the CLI in a dedicated container that the integration connects to over the internal network. Add-on <strong>v3.12.0</strong> uses CLI <strong>v1.0.83</strong>, matching the integration's SDK <strong>1.0.13</strong>.</p>
 
             <div class="callout tip">
                 <strong>💡 Recommended for Home Assistant OS</strong>
-                <p>This is the easiest way to use the integration without manually installing the Copilot CLI binary in the Core container.</p>
+                <p>The bridge manages the CLI separately from Home Assistant Core. Alternatively, local mode lets the SDK download its matching runtime automatically; neither mode requires manual binary installation.</p>
             </div>
 
             <h3>Add-on Highlights</h3>
@@ -479,11 +480,13 @@
                 <li>Click the <strong>⋮</strong> menu and choose <strong>Repositories</strong>.</li>
                 <li>Add: <code>https://github.com/tserra30/Github-Copilot-SDK-integration</code></li>
                 <li>Find <strong>GitHub Copilot Bridge</strong> in the store and click <strong>Install</strong>.</li>
-                <li>In the add-on <strong>Configuration</strong> tab, set your GitHub token:
-                    <pre><code>github_token: "ghp_yourTokenHere"</code></pre>
+                <li>In the add-on <strong>Configuration</strong> tab, set your fine-grained GitHub token with <strong>Account permissions &rarr; Copilot Requests &rarr; Read and write</strong>:
+                    <pre><code>github_token: "&lt;GITHUB_FINE_GRAINED_PAT&gt;"
+mcp_config: ""</code></pre>
                 </li>
                 <li>Start the add-on and check the <strong>Log</strong> tab to confirm success.</li>
             </ol>
+            <p>Configure MCP in the <strong>integration's MCP field</strong>, even when using the bridge. The add-on's optional <code>mcp_config</code> is available to other bridge clients but does not authorize tools for this integration.</p>
 
             <h3>Finding the Add-on URL</h3>
             <p>The integration connects to the add-on via its internal hostname (shown in the add-on <strong>Info</strong> tab). The URL format is:</p>
@@ -501,9 +504,10 @@ http://a1b2c3d4-github-copilot-bridge:8000</code></pre>
                 <li>Search for <strong>GitHub Copilot</strong> and select it.</li>
                 <li>Fill in the fields:
                     <ul>
-                        <li><strong>GitHub Token</strong> — Personal access token with Copilot permissions. Optional when using the Bridge add-on (the add-on manages its own authentication).</li>
-                        <li><strong>Model</strong> — The AI model to use (default: <code>GPT-4o</code>).</li>
-                        <li><strong>Copilot CLI URL</strong> *(optional)* — URL of the Bridge add-on, e.g. <code>http://a1b2c3d4-github-copilot-bridge:8000</code>. Leave empty to use a locally installed Copilot CLI.</li>
+                        <li><strong>GitHub Token</strong> &mdash; Fine-grained personal access token with Copilot Requests permission. Required in local mode; optional with a bridge URL because the bridge manages authentication.</li>
+                        <li><strong>Model</strong> &mdash; Defaults to <code>auto</code> for new setups; custom model IDs are also accepted. Existing saved choices are preserved.</li>
+                        <li><strong>Copilot CLI URL</strong> (optional) &mdash; URL of the bridge, e.g. <code>http://a1b2c3d4-github-copilot-bridge:8000</code>. Leave empty for local mode, where the SDK downloads a matching runtime if no installed or explicit executable is available.</li>
+                        <li><strong>MCP configuration</strong> (optional) &mdash; Inline JSON containing <code>mcpServers</code>, or a JSON file path readable by Home Assistant Core, optionally prefixed with <code>@</code>.</li>
                     </ul>
                 </li>
             </ol>
@@ -516,10 +520,34 @@ http://a1b2c3d4-github-copilot-bridge:8000</code></pre>
             <h3>Getting a GitHub Token</h3>
             <ol>
                 <li>Ensure you have an active <strong>GitHub Copilot subscription</strong>.</li>
-                <li>Generate a PAT from <a href="https://github.com/settings/tokens">GitHub Developer Settings</a>.</li>
-                <li>Grant the necessary Copilot permissions.</li>
+                <li>Generate a <strong>fine-grained PAT</strong> from <a href="https://github.com/settings/personal-access-tokens/new">GitHub token settings</a>.</li>
+                <li>Grant <strong>Account permissions &rarr; Copilot Requests &rarr; Read and write</strong>. Repository permissions are not required.</li>
                 <li>Keep the token secure — never share it publicly.</li>
             </ol>
+            <p>Classic PATs are not a supported fallback. Keep the GitHub token separate from the Home Assistant long-lived token used for MCP.</p>
+
+            <h3 id="mcp-configuration">Home Assistant MCP Setup</h3>
+            <ol>
+                <li>Add <strong>Model Context Protocol Server</strong> under <strong>Settings &rarr; Devices &amp; services</strong>, enable its <strong>Assist API</strong>, and expose a safe test helper to Assist.</li>
+                <li>Create a <strong>Home Assistant long-lived access token</strong> in your profile's security settings.</li>
+                <li>Set the following in the <strong>GitHub Copilot integration's MCP configuration field</strong> (not just the add-on options):</li>
+            </ol>
+            <pre><code>{
+  "mcpServers": {
+    "homeassistant": {
+      "type": "http",
+      "url": "http://homeassistant:8123/api/mcp",
+      "tools": ["*"],
+      "headers": {
+        "Authorization": "Bearer &lt;HOME_ASSISTANT_TOKEN&gt;"
+      }
+    }
+  }
+}</code></pre>
+            <p>The URL must be reachable from the <strong>Copilot CLI runtime</strong>; <code>homeassistant</code> is appropriate on the bridge's internal network. Other deployments need an appropriate reachable address. No external MCP server or proxy is needed.</p>
+            <p><strong>Every server requires an explicit <code>tools</code> list.</strong> Use <code>[]</code> to disable tools, named tools for limited access, or <code>["*"]</code> to authorize all current and future tools on a trusted server. Allowed calls execute without confirmation. Built-in CLI tools and unconfigured MCP access are denied.</p>
+            <p>Missing <code>tools</code>, invalid JSON, unreadable files, and invalid server definitions produce errors during setup and options changes. Older configurations without a tools list must be updated explicitly. Protect MCP headers and files as credentials, and verify actual helper state changes rather than relying only on a model's success message.</p>
+            <p>See the <a href="https://github.com/tserra30/Github-Copilot-SDK-integration/blob/main/README.md#mcp-configuration">README's MCP configuration guide</a> for details.</p>
 
             <h3>Example Automation</h3>
             <pre><code>automation:
@@ -537,23 +565,8 @@ http://a1b2c3d4-github-copilot-bridge:8000</code></pre>
         <!-- ── Supported Models ── -->
         <section id="models">
             <h2>Supported Models</h2>
-            <p>Choose from a wide variety of LLMs via the Copilot SDK:</p>
-            <ul class="model-list">
-                <li>GPT-4o</li>
-                <li>GPT-4o-mini</li>
-                <li>GPT-4</li>
-                <li>GPT-4 Turbo</li>
-                <li>GPT-4.1</li>
-                <li>GPT-3.5 Turbo</li>
-                <li>GPT-5</li>
-                <li>o3-mini</li>
-                <li>o1</li>
-                <li>o1-mini</li>
-                <li>Claude 3.5 Sonnet</li>
-                <li>Claude 4.5 Sonnet</li>
-                <li>Claude 4.5 Haiku</li>
-                <li>Claude 4.6 Opus</li>
-            </ul>
+            <p>New setups default to <code>auto</code>. Open <strong>Settings &rarr; Devices &amp; services &rarr; GitHub Copilot &rarr; Configure</strong> to fetch the runtime's live model catalog and select an available model.</p>
+            <p>Existing selections are not silently replaced on upgrade. If an older ID such as <code>gpt-4.1</code> produces <strong>Model not available</strong>, choose a currently supported model through <strong>Configure</strong>.</p>
         </section>
 
         <!-- ── Troubleshooting ── -->
@@ -564,22 +577,23 @@ http://a1b2c3d4-github-copilot-bridge:8000</code></pre>
             <p>This means the Copilot CLI is not reachable. Two options:</p>
             <ul>
                 <li><strong>Option A (Recommended)</strong> — Install and start the <a href="#bridge-addon">GitHub Copilot Bridge add-on</a>, then enter its URL in the <strong>Copilot CLI URL</strong> field.</li>
-                <li><strong>Option B</strong> — Install the Copilot CLI manually inside the Home Assistant Core container and authenticate it with <code>copilot auth login</code>.</li>
+                <li><strong>Local mode</strong> &mdash; Leave the CLI URL empty and configure a fine-grained GitHub token in the integration. Check outbound connectivity, a writable SDK runtime cache, and any stale <code>COPILOT_CLI_PATH</code> override.</li>
             </ul>
 
             <h3>Authentication Errors</h3>
             <ul>
-                <li>Verify your GitHub token is valid and has Copilot permissions.</li>
+                <li>Verify your fine-grained GitHub token is valid and has <strong>Copilot Requests &rarr; Read and write</strong> permission.</li>
                 <li>Ensure your GitHub Copilot subscription is active.</li>
                 <li>Try regenerating your personal access token.</li>
             </ul>
 
             <h3>SDK Installation Issues (Home Assistant OS)</h3>
-            <p>This integration uses a <strong>patched <code>github-copilot-sdk 0.1.22+ha</code></strong> wheel installed automatically from the repository's <code>wheels/</code> directory. It is a universal <code>py3-none-any</code> wheel with protocol v3 support — no glibc version constraints. This resolves the <code>manylinux_2_28</code> incompatibility seen with SDK versions 0.1.23+.</p>
+            <p>Home Assistant installs the official <strong><code>github-copilot-sdk==1.0.13</code></strong> from PyPI in both modes. Its universal <code>py3-none-any</code> wheel supports Home Assistant Core's Alpine/musl container; no custom wheel is required.</p>
+            <p>In <strong>local mode</strong>, the SDK automatically downloads and verifies a checksummed matching CLI runtime when no installed or explicit executable is available. SDK 1.0.13 pins CLI <strong>1.0.83</strong>, with musl and glibc builds for amd64/arm64. In <strong>remote bridge mode</strong>, no local CLI binary or runtime download is needed. Update the bridge alongside the integration.</p>
 
             <h3>Slow Responses</h3>
             <ul>
-                <li>Try a faster model such as <code>GPT-3.5 Turbo</code> or <code>GPT-4o-mini</code>.</li>
+                <li>Choose an available faster model through <strong>Configure</strong>, or increase the response timeout there.</li>
                 <li>Check your network latency.</li>
                 <li>Reduce concurrent requests.</li>
             </ul>

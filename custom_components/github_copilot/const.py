@@ -15,13 +15,14 @@ CONF_TIMEOUT = "timeout"
 CONF_MCP_CONFIG = "mcp_config"
 
 # Default values
-DEFAULT_MODEL = "gpt-4o"
+DEFAULT_MODEL = "auto"
 DEFAULT_CLI_URL = ""
 DEFAULT_TIMEOUT = 120
 DEFAULT_MCP_CONFIG = ""
 
 # Supported models
 SUPPORTED_MODELS = [
+    "auto",
     "gpt-4o",
     "gpt-4o-mini",
     "gpt-4",
