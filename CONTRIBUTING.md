@@ -85,7 +85,8 @@ python -m ruff format .
 - Accept inline JSON containing `mcpServers`, or an optional `@`-prefixed JSON file path readable by Home Assistant Core
 - Validate MCP configuration in both setup and options flows; load files off the event loop and surface malformed or unreadable configuration rather than silently accepting or discarding it
 - Use canonical remote `type: "http"` or `"sse"`, `url`, `tools`, and optional `headers`; normalize supported legacy transport and working-directory aliases
-- Authorize only configured MCP servers and tools through the SDK permission callback; preserve explicit tool allowlists
+- Require an explicit `tools` list on every server: reject omissions, preserve `[]` as deny-all, named allowlists, and explicit `["*"]` opt-in
+- Authorize only configured MCP servers and tools through the SDK permission callback
 - Disable built-in CLI tools and deny unknown or unconfigured MCP requests
 - Require integration-level MCP configuration in bridge mode too; add-on `mcp_config` alone must not grant authorization
 - Treat tokens and MCP authorization headers as secrets; do not expose them in logs or errors
@@ -125,7 +126,7 @@ The upgrade validation environment is **official Home Assistant Container 2026.9
 1. Follow the [README MCP setup](README.md#mcp-configuration): add **Model Context Protocol Server**, enable its **Assist API**, and expose a safe input boolean helper to Assist.
 2. Use two separate credentials: a GitHub fine-grained PAT with **Account permissions → Copilot Requests → Read and write**, and a Home Assistant long-lived token in the MCP `Authorization: Bearer ...` header. Classic GitHub PATs are not the supported fallback.
 3. Configure MCP in the **integration's MCP field**, including when testing through the bridge. Use `http://homeassistant:8123/api/mcp` from the bridge, or an address reachable from the CLI runtime for a separate container deployment. No third-party MCP server or proxy is required.
-4. In both setup and options flows, test inline JSON and a Home Assistant-readable file path, both with and without the optional `@` prefix. Confirm malformed JSON, unreadable paths, and invalid server definitions are rejected, with file I/O off the event loop.
+4. In both setup and options flows, test inline JSON and a Home Assistant-readable file path, both with and without the optional `@` prefix. Confirm malformed JSON, unreadable paths, invalid server definitions, and missing `tools` lists are rejected, with file I/O off the event loop. Existing configurations without `tools` require an explicit choice; do not auto-migrate them to `["*"]`.
 5. Ask the agent to turn the test helper on and off. Confirm the actual entity state changes after each request; text claiming success is not sufficient.
 6. Check explicit tool allowlists, denial of unconfigured MCP servers/tools, and disabled built-in CLI tools. Confirm add-on-only MCP configuration does not implicitly authorize tools.
 7. Verify remote mode does not attempt a local runtime download. For local mode, test the SDK-managed runtime when no CLI executable is preinstalled or explicitly configured.

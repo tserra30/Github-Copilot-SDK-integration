@@ -128,7 +128,8 @@ class GitHubCopilotApiClient:
         except ValueError as exception:
             msg = (
                 "Invalid MCP configuration. Provide valid mcpServers JSON or a "
-                "readable JSON file inside Home Assistant, not only the bridge."
+                "readable JSON file inside Home Assistant, not only the bridge. "
+                "Every server requires an explicit tools list."
             )
             LOGGER.error(msg)
             raise GitHubCopilotApiClientError(msg) from exception

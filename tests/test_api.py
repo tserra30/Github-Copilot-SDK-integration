@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import create_autospec, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, create_autospec, patch
 
-from copilot import CopilotClient, CopilotSession
+from copilot import CopilotClient, CopilotSession, RuntimeConnection
 from copilot.client import StdioRuntimeConnection, UriRuntimeConnection
 from copilot.rpc import (
     PermissionDecisionApproveOnce,
@@ -21,10 +21,15 @@ from custom_components.github_copilot.api import (
     GitHubCopilotApiClientCommunicationError,
     GitHubCopilotApiClientError,
 )
-from custom_components.github_copilot.config_flow import _async_validate_mcp_config
+from custom_components.github_copilot.config_flow import (
+    GitHubCopilotFlowHandler,
+    GitHubCopilotOptionsFlow,
+    _async_validate_mcp_config,
+)
 from custom_components.github_copilot.conversation import (
     GitHubCopilotConversationEntity,
 )
+from custom_components.github_copilot.mcp import parse_mcp_config
 
 
 class CopilotAPITests(IsolatedAsyncioTestCase):
@@ -106,6 +111,25 @@ class CopilotAPITests(IsolatedAsyncioTestCase):
                 request, {"session_id": "sdk-session"}
             ),
             PermissionDecisionUserNotAvailable,
+        )
+
+    async def test_explicit_wildcard_authorizes_only_configured_server(self) -> None:
+        """An explicit wildcard still cannot authorize another server's tool."""
+        self.api._mcp_servers["ha"]["tools"] = ["*"]  # noqa: SLF001
+        request = PermissionRequestMcp(
+            read_only=False,
+            server_name="ha",
+            tool_name="HassTurnOff",
+            tool_title="Turn off",
+        )
+        handler = self.api._handle_permission_request  # noqa: SLF001
+        invocation = {"session_id": "sdk-session"}
+        self.assertIsInstance(
+            handler(request, invocation), PermissionDecisionApproveOnce
+        )
+        request.server_name = "unknown"
+        self.assertIsInstance(
+            handler(request, invocation), PermissionDecisionUserNotAvailable
         )
 
     async def test_prompt_and_session_cleanup_use_current_sdk(self) -> None:
@@ -196,6 +220,108 @@ class CopilotAPITests(IsolatedAsyncioTestCase):
         ):
             await api.async_create_session()
         constructor.assert_not_called()
+
+    async def test_missing_tools_fails_before_connecting(self) -> None:
+        """Reject legacy implicit authorization before any SDK client is created."""
+        config = '{"mcpServers":{"ha":{"type":"http","url":"http://host/mcp"}}}'
+        self.assertFalse(await _async_validate_mcp_config(config))
+        api = GitHubCopilotApiClient(mcp_config=config)
+        with (
+            patch(
+                "custom_components.github_copilot.api.copilot.CopilotClient"
+            ) as constructor,
+            self.assertRaisesRegex(GitHubCopilotApiClientError, "Invalid MCP"),
+        ):
+            await api.async_create_session()
+        constructor.assert_not_called()
+
+    async def test_setup_and_options_reject_missing_tools(self) -> None:
+        """Both HA forms reject implicit authorization without persisting it."""
+        user_input = {
+            "model": "auto",
+            "cli_url": "http://bridge:8000",
+            "mcp_config": '{"mcpServers":{"ha":{"url":"http://host/mcp"}}}',
+        }
+        setup = GitHubCopilotFlowHandler()
+        with (
+            patch.object(setup, "async_show_form") as show_setup,
+            patch.object(setup, "_test_credentials") as test_credentials,
+        ):
+            await setup.async_step_user(user_input)
+        self.assertEqual(
+            show_setup.call_args.kwargs["errors"], {"mcp_config": "invalid_mcp"}
+        )
+        test_credentials.assert_not_called()
+
+        options = GitHubCopilotOptionsFlow()
+        update_entry = Mock()
+        options.hass = SimpleNamespace(
+            config_entries=SimpleNamespace(async_update_entry=update_entry)
+        )
+        entry = SimpleNamespace(
+            data={},
+            runtime_data=SimpleNamespace(
+                client=SimpleNamespace(
+                    async_available_models=AsyncMock(return_value=["auto"])
+                )
+            ),
+        )
+        with (
+            patch.object(
+                GitHubCopilotOptionsFlow,
+                "config_entry",
+                new_callable=PropertyMock,
+                return_value=entry,
+            ),
+            patch.object(options, "async_show_form") as show_options,
+        ):
+            await options.async_step_init(user_input)
+        self.assertEqual(
+            show_options.call_args.kwargs["errors"], {"mcp_config": "invalid_mcp"}
+        )
+        update_entry.assert_not_called()
+
+    async def test_published_sdk_serializes_local_working_directory(self) -> None:
+        """Exercise the real SDK session serializer, mocking only RPC transport."""
+        for directory_key in ("cwd", "working_directory"):
+            with self.subTest(directory_key=directory_key):
+                servers = parse_mcp_config(
+                    json.dumps(
+                        {
+                            "mcpServers": {
+                                "local": {
+                                    "command": "example",
+                                    directory_key: "/config/mcp-server",
+                                    "tools": [],
+                                }
+                            }
+                        }
+                    )
+                )
+                client = CopilotClient(
+                    connection=RuntimeConnection.for_uri("http://bridge:8000")
+                )
+                rpc = Mock()
+                rpc.request = AsyncMock(
+                    side_effect=[{"sessionId": "sdk-session"}, {"success": True}]
+                )
+                with patch.object(client, "_client", rpc):
+                    session = await client.create_session(
+                        session_id="sdk-session", mcp_servers=servers
+                    )
+                    method, payload = rpc.request.call_args.args
+                    self.assertEqual(method, "session.create")
+                    self.assertEqual(
+                        payload["mcpServers"]["local"]["cwd"], "/config/mcp-server"
+                    )
+                    self.assertNotIn(
+                        "working_directory", payload["mcpServers"]["local"]
+                    )
+                    await session.disconnect()
+                self.assertEqual(
+                    servers["local"]["working_directory"], "/config/mcp-server"
+                )
+                self.assertNotIn("cwd", servers["local"])
 
     async def test_entity_cleanup_uses_sdk_not_ha_conversation_id(self) -> None:
         """Expiry and unload clean up the actual SDK session, not the HA ID."""

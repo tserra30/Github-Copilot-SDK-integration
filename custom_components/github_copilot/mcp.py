@@ -78,11 +78,14 @@ def parse_mcp_config(value: str) -> dict[str, MCPServerConfig]:
                 raise ValueError(msg)
             server["type"] = transport
         server_type = server.get("type", "http" if "url" in server else "local")
-        tools = server.get("tools", ["*"])
+        tools = server.get("tools")
         if not isinstance(tools, list) or not all(
             isinstance(tool, str) and tool for tool in tools
         ):
-            msg = "MCP tools must be a list of non-empty tool names or ['*']."
+            msg = (
+                "Each MCP server requires an explicit tools list: "
+                "[] to disable tools, named tools, or ['*'] to allow all."
+            )
             raise ValueError(msg)
 
         config: MCPServerConfig
@@ -137,6 +140,7 @@ def parse_mcp_config(value: str) -> dict[str, MCPServerConfig]:
                 if not isinstance(directory, str):
                     msg = "MCP working_directory must be a string."
                     raise ValueError(msg)
+                # The SDK's Python API serializes working_directory to wire cwd.
                 config["working_directory"] = directory
             allowed = {
                 "type",

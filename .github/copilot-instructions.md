@@ -60,6 +60,8 @@ addon/
 - The integration's MCP field accepts inline JSON containing `mcpServers` or a Home Assistant-readable JSON file path, optionally prefixed with `@`
 - Validate MCP configuration in both setup and options flows; load files off the event loop and report invalid JSON, unreadable files, and invalid server definitions instead of silently accepting or ignoring them
 - Normalize legacy transport and working-directory aliases; canonical remote definitions use `type: "http"` or `"sse"`, `url`, `tools`, and optional `headers`
+- Every server requires an explicit `tools` list; reject missing lists instead of silently authorizing all tools
+- SDK 1.0.13 accepts local `working_directory` and serializes it to wire `cwd`; normalize legacy `cwd` input to the SDK field
 - Pass validated definitions through the SDK session's `mcp_servers` keyword argument
 - Register a permission callback that approves only configured MCP servers and their allowed tools
 - Preserve `tools: ["*"]` or explicit tool-name allowlists; deny unknown or unconfigured servers/tools
