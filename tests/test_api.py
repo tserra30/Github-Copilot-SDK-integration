@@ -70,18 +70,18 @@ class CopilotAPITests(IsolatedAsyncioTestCase):
         request = PermissionRequestMcp(
             read_only=False,
             server_name="ha",
-            tool_name="HassTurnOn",
+            tool_name="ha-HassTurnOn",
             tool_title="Turn on",
         )
         handler = self.api._handle_permission_request  # noqa: SLF001
         self.assertIsInstance(
             handler(request, invocation), PermissionDecisionApproveOnce
         )
-        request.tool_name = "HassTurnOff"
+        request.tool_name = "ha-HassTurnOff"
         self.assertIsInstance(
             handler(request, invocation), PermissionDecisionUserNotAvailable
         )
-        request.tool_name = "HassTurnOn"
+        request.tool_name = "ha-HassTurnOn"
         request.server_name = "unknown"
         self.assertIsInstance(
             handler(request, invocation), PermissionDecisionUserNotAvailable
@@ -103,7 +103,7 @@ class CopilotAPITests(IsolatedAsyncioTestCase):
         request = PermissionRequestMcp(
             read_only=True,
             server_name="ha",
-            tool_name="GetLiveContext",
+            tool_name="ha-GetLiveContext",
             tool_title="Read state",
         )
         self.assertIsInstance(
@@ -119,7 +119,7 @@ class CopilotAPITests(IsolatedAsyncioTestCase):
         request = PermissionRequestMcp(
             read_only=False,
             server_name="ha",
-            tool_name="HassTurnOff",
+            tool_name="ha-HassTurnOff",
             tool_title="Turn off",
         )
         handler = self.api._handle_permission_request  # noqa: SLF001
@@ -130,6 +130,67 @@ class CopilotAPITests(IsolatedAsyncioTestCase):
         request.server_name = "unknown"
         self.assertIsInstance(
             handler(request, invocation), PermissionDecisionUserNotAvailable
+        )
+
+    async def test_namespaced_permission_ids_match_exact_server_prefix(self) -> None:
+        """Match real HA tool IDs without splitting hyphenated server names."""
+        for server_name in ("ha", "home-assistant"):
+            with self.subTest(server_name=server_name):
+                self.api._mcp_servers = {  # noqa: SLF001
+                    server_name: {
+                        **self.servers["ha"],
+                        "tools": ["intent__HassTurnOn"],
+                    }
+                }
+                request = PermissionRequestMcp(
+                    read_only=False,
+                    server_name=server_name,
+                    tool_name=f"{server_name}-intent__HassTurnOn",
+                    tool_title="Turn on",
+                )
+                self.assertIsInstance(
+                    self.api._handle_permission_request(  # noqa: SLF001
+                        request, {"session_id": "sdk-session"}
+                    ),
+                    PermissionDecisionApproveOnce,
+                )
+
+    async def test_permission_ids_require_matching_server_qualification(self) -> None:
+        """Reject foreign prefixes, bare names, and empty tool IDs even with '*'."""
+        for tools in (["HassTurnOn"], ["*"]):
+            self.api._mcp_servers["ha"]["tools"] = tools  # noqa: SLF001
+            for tool_name in ("other-HassTurnOn", "HassTurnOn", "ha-"):
+                with self.subTest(tools=tools, tool_name=tool_name):
+                    request = PermissionRequestMcp(
+                        read_only=False,
+                        server_name="ha",
+                        tool_name=tool_name,
+                        tool_title="Turn on",
+                    )
+                    self.assertIsInstance(
+                        self.api._handle_permission_request(  # noqa: SLF001
+                            request, {"session_id": "sdk-session"}
+                        ),
+                        PermissionDecisionUserNotAvailable,
+                    )
+
+    async def test_prefixed_tool_names_do_not_authorize_a_different_tool(self) -> None:
+        """Strip the server prefix once; do not fall back to matching the raw ID."""
+        self.api._mcp_servers["ha"]["tools"] = ["ha-HassTurnOn"]  # noqa: SLF001
+        request = PermissionRequestMcp(
+            read_only=False,
+            server_name="ha",
+            tool_name="ha-HassTurnOn",
+            tool_title="Turn on",
+        )
+        handler = self.api._handle_permission_request  # noqa: SLF001
+        invocation = {"session_id": "sdk-session"}
+        self.assertIsInstance(
+            handler(request, invocation), PermissionDecisionUserNotAvailable
+        )
+        request.tool_name = "ha-ha-HassTurnOn"
+        self.assertIsInstance(
+            handler(request, invocation), PermissionDecisionApproveOnce
         )
 
     async def test_prompt_and_session_cleanup_use_current_sdk(self) -> None:

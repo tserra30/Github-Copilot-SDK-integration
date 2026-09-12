@@ -64,6 +64,7 @@ addon/
 - SDK 1.0.13 accepts local `working_directory` and serializes it to wire `cwd`; normalize legacy `cwd` input to the SDK field
 - Pass validated definitions through the SDK session's `mcp_servers` keyword argument
 - Register a permission callback that approves only configured MCP servers and their allowed tools
+- MCP permission `tool_name` is CLI-qualified as `<server>-<tool>`; compare only after verifying and removing that exact server prefix once. Configured `tools` use the MCP server's advertised IDs.
 - Preserve `tools: ["*"]` or explicit tool-name allowlists; deny unknown or unconfigured servers/tools
 - Disable built-in CLI tools; never replace the permission policy with blanket approval
 - Require MCP configuration in the **integration field even in bridge mode**; add-on `mcp_config` alone does not authorize tools for this integration

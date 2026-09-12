@@ -129,6 +129,8 @@ MCP configuration is validated during **both setup and options changes**. Files 
 
 Configured tool allowlists are **authorization**, not just discovery: allowed MCP tool calls can execute without an interactive approval prompt. Only authorize servers and tools you trust. Built-in CLI tools are disabled, and unknown or unconfigured MCP servers/tools are denied. Add-on `mcp_config` alone does not grant this authorization.
 
+Use the exact tool IDs advertised by the MCP server. For example, Home Assistant may advertise `intent__HassTurnOn` and `homeassistant__GetLiveContext`; friendly names such as `HassTurnOn` do not match those IDs. Do not add the CLI's extra server-name prefix to the `tools` list.
+
 #### Home Assistant's Built-in MCP Server
 
 No external MCP server or proxy is needed:

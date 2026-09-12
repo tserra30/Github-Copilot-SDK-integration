@@ -154,8 +154,12 @@ class GitHubCopilotApiClient:
             server = self._mcp_servers.get(request.server_name)
             if server is not None:
                 tools = server.get("tools", [])
-                if "*" in tools or request.tool_name in tools:
-                    return PermissionDecisionApproveOnce()
+                # CLI permission IDs are server-qualified; MCP allowlists are not.
+                prefix = f"{request.server_name}-"
+                if request.tool_name.startswith(prefix):
+                    tool_name = request.tool_name[len(prefix) :]
+                    if tool_name and ("*" in tools or tool_name in tools):
+                        return PermissionDecisionApproveOnce()
         LOGGER.warning(
             "Denied a Copilot tool permission outside configured MCP access."
         )
