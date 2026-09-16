@@ -9,6 +9,7 @@ select = [
 
 ignore = [
     "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "CPY001", # Licensing is recorded in LICENSE, not per-file copyright notices
     "D203", # no-blank-line-before-class (incompatible with formatter)
     "D212", # multi-line-summary-first-line (incompatible with formatter)
     "COM812", # incompatible with formatter
@@ -25,3 +26,9 @@ keep-runtime-typing = true
 
 [lint.mccabe]
 max-complexity = 25
+
+[lint.per-file-ignores]
+"tests/*.py" = [
+    "PT009", # These tests use the standard-library unittest runner
+    "PT027", # Keep unittest exception assertions without adding pytest
+]

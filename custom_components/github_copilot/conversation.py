@@ -32,6 +32,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up GitHub Copilot conversation platform via config entry."""
     try:
+        await config_entry.runtime_data.client.async_load_mcp_servers()
         agent = GitHubCopilotConversationEntity(config_entry)
         async_add_entities([agent])
         LOGGER.debug("GitHub Copilot conversation entity setup completed")
@@ -55,6 +56,10 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         self.entry = config_entry
         self._attr_name = "GitHub Copilot"
         self._attr_unique_id = f"{config_entry.entry_id}-conversation"
+        if config_entry.runtime_data.client.has_mcp_tools:
+            self._attr_supported_features = (
+                conversation.ConversationEntityFeature.CONTROL
+            )
         self.sessions: dict[str, CopilotSessionContext] = {}
         self._session_last_used: dict[str, float] = {}
         # Session timeout: 1 hour of inactivity
@@ -76,7 +81,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         session_ids = list(self.sessions.keys())
         for session_id in session_ids:
             try:
-                await client.async_end_session(session_id)
+                await client.async_end_session(self.sessions[session_id].session_id)
                 LOGGER.debug("Cleaned up session %s", session_id)
             except Exception as err:  # noqa: BLE001
                 LOGGER.error(
@@ -108,7 +113,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
 
         for session_id in expired_sessions:
             try:
-                await client.async_end_session(session_id)
+                await client.async_end_session(self.sessions[session_id].session_id)
                 LOGGER.debug("Expired session %s cleaned up", session_id)
             except Exception as err:  # noqa: BLE001
                 LOGGER.error(
@@ -134,7 +139,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
     ) -> conversation.ConversationResult:
         """Create an error response result."""
         intent_response = intent.IntentResponse(language=language)
-        intent_response.async_set_speech(message)
+        intent_response.async_set_error(intent.IntentResponseErrorCode.UNKNOWN, message)
         return conversation.ConversationResult(
             response=intent_response,
             conversation_id=conversation_id,

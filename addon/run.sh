@@ -13,27 +13,24 @@ fi
 # GH_TOKEN is picked up automatically by the CLI without interactive prompts.
 export GH_TOKEN="${GITHUB_TOKEN}"
 
-# Verify that the CLI can read auth state before attempting to start the server.
-# Newer Copilot CLI versions use prompt mode for this check, while older
-# versions support the dedicated 'auth status' command. Both checks are wrapped
-# in a timeout so a CLI that waits for user input cannot block add-on startup.
-# These checks are best-effort only: a GH_TOKEN-only setup can still work even
-# if this probe fails.
-bashio::log.info "Verifying GitHub Copilot CLI authentication..."
-if timeout 10 copilot -p "auth status" --silent >/dev/null 2>&1 || timeout 10 copilot auth status >/dev/null 2>&1; then
-    bashio::log.info "Authentication probe completed."
+bashio::log.info "GitHub token configured via GH_TOKEN; not validated during bridge startup."
+bashio::log.info "SDK clients check authentication and model access when they connect and send a request."
+bashio::log.info "Copilot CLI runtime:"
+copilot --version
+
+if [[ -n "${COPILOT_CONNECTION_TOKEN:-}" ]]; then
+    bashio::log.info "Bridge connection-token authentication is configured; SDK clients must provide the matching secret."
 else
-    bashio::log.warning "Copilot CLI auth probe failed. This can be expected with token-only setups. Proceeding to start the server; check server logs if authentication fails at runtime."
+    bashio::log.info "Bridge connection-token authentication is not configured. The CLI warning about COPILOT_CONNECTION_TOKEN is separate from GitHub authentication."
+    bashio::log.info "Any client that can reach port 8000 may connect; keep this port on a trusted internal network."
 fi
+bashio::log.info "Integration connection/session messages appear in Home Assistant logs under custom_components.github_copilot, not in this bridge log."
 
 # Feature-detect optional CLI flags so the script works across pinned CLI versions.
-# --bind 0.0.0.0  : ensures the server is reachable from other Supervisor-network containers.
 # --no-auto-update: suppresses self-update checks that can cause unexpected behaviour.
 # --log-level     : controls server verbosity.
 # Use an array for the full argument list to avoid word-splitting issues.
 # `|| true` prevents the script from aborting if `copilot --help` exits non-zero.
-# --bind is only advertised in the headless/server sub-command help in some CLI
-# versions (e.g. v1.0.9), so capture both global and headless help texts.
 COPILOT_HELP=$(copilot --help 2>&1 || true)
 COPILOT_HEADLESS_HELP=$(copilot --headless --help 2>&1 || true)
 # Returns 0 if the given long flag name appears at the start of a line in the
@@ -57,11 +54,9 @@ validate_mcp_config_file() {
 
     grep -qE '^[[:space:]]*\{' "${config_file}" && grep -qE '"mcpServers"[[:space:]]*:' "${config_file}"
 }
-COPILOT_ARGS=(--headless --port 8000)
-# --bind may only appear under the headless sub-command help.
-if has_flag "${COPILOT_HEADLESS_HELP}" bind || has_flag "${COPILOT_HELP}" bind; then
-    COPILOT_ARGS+=(--bind 0.0.0.0)
-fi
+# CLI 1.0.83 defaults to loopback; its supported --host flag is hidden from help.
+# Bind inside the add-on network namespace, without publishing a host port.
+COPILOT_ARGS=(--headless --host 0.0.0.0 --port 8000)
 if has_flag "${COPILOT_HELP}" no-auto-update; then
     COPILOT_ARGS+=(--no-auto-update)
 fi
@@ -119,9 +114,10 @@ RETRY_DELAY=5
 ATTEMPT=1
 
 while true; do
-    bashio::log.info "Starting GitHub Copilot CLI server on port 8000 (attempt ${ATTEMPT})..."
-    copilot "${COPILOT_ARGS[@]}"
-    EXIT_CODE=$?
+    bashio::log.info "Starting GitHub Copilot CLI server on 0.0.0.0:8000 (attempt ${ATTEMPT})..."
+    # Bashio enables errexit, so capture failure explicitly to reach the retry loop.
+    EXIT_CODE=0
+    copilot "${COPILOT_ARGS[@]}" || EXIT_CODE=$?
 
     if [ "${EXIT_CODE}" -eq 0 ]; then
         bashio::log.info "GitHub Copilot CLI server exited normally. Stopping add-on."
