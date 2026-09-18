@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
@@ -53,7 +54,7 @@ class CopilotAPITests(IsolatedAsyncioTestCase):
         self.api = GitHubCopilotApiClient(
             mcp_config=json.dumps({"mcpServers": self.servers})
         )
-        await self.api._load_mcp_servers()  # noqa: SLF001
+        await self.api.async_load_mcp_servers()
         self.api._client = self.sdk  # noqa: SLF001
 
     async def test_session_forwards_mcp_and_excludes_builtin_tools(self) -> None:
@@ -221,6 +222,129 @@ class CopilotAPITests(IsolatedAsyncioTestCase):
         self.sdk.delete_session.assert_awaited_once_with("sdk-session")
         with self.assertRaisesRegex(GitHubCopilotApiClientError, "not found"):
             await self.api.async_send_prompt(context.session_id, "Try again")
+
+    async def test_disconnect_failure_still_attempts_delete(self) -> None:
+        """Both cleanup paths delete the session even after detach fails."""
+        for best_effort in (False, True):
+            with self.subTest(best_effort=best_effort):
+                self.session.disconnect.reset_mock()
+                self.sdk.delete_session.reset_mock()
+                context = await self.api.async_create_session()
+                self.session.disconnect.side_effect = RuntimeError("private-fixture")
+                with self.assertLogs(
+                    "custom_components.github_copilot", level="WARNING"
+                ) as logs:
+                    if best_effort:
+                        await self.api._evict_broken_session(  # noqa: SLF001
+                            context.session_id
+                        )
+                    else:
+                        with self.assertRaises(GitHubCopilotApiClientError):
+                            await self.api.async_end_session(context.session_id)
+                self.session.disconnect.assert_awaited_once()
+                self.sdk.delete_session.assert_awaited_once_with("sdk-session")
+                self.assertNotIn("private-fixture", "\n".join(logs.output))
+                self.assertNotIn("session closed", "\n".join(logs.output))
+                self.session.disconnect.side_effect = None
+
+    async def test_disconnect_timeout_does_not_skip_delete(self) -> None:
+        """Each cleanup operation receives its own bounded timeout."""
+
+        async def stuck_disconnect() -> None:
+            await asyncio.sleep(0.1)
+
+        for best_effort in (False, True):
+            with self.subTest(best_effort=best_effort):
+                context = await self.api.async_create_session()
+                self.session.disconnect.side_effect = stuck_disconnect
+                self.sdk.delete_session.reset_mock()
+                with (
+                    patch(
+                        "custom_components.github_copilot.api._SESSION_DESTROY_TIMEOUT",
+                        0.01,
+                    ),
+                    self.assertLogs(
+                        "custom_components.github_copilot", level="WARNING"
+                    ) as logs,
+                ):
+                    if best_effort:
+                        await self.api._evict_broken_session(  # noqa: SLF001
+                            context.session_id
+                        )
+                    else:
+                        with self.assertRaises(GitHubCopilotApiClientError):
+                            await self.api.async_end_session(context.session_id)
+                self.assertIn("TimeoutError", "\n".join(logs.output))
+                self.sdk.delete_session.assert_awaited_once_with("sdk-session")
+                self.session.disconnect.side_effect = None
+
+    async def test_both_cleanup_failures_remain_observable(self) -> None:
+        """Attempt each failed operation while preserving the original send error."""
+        context = await self.api.async_create_session()
+        self.session.send_and_wait.side_effect = TimeoutError
+        self.session.disconnect.side_effect = RuntimeError("private-disconnect")
+        self.sdk.delete_session.side_effect = RuntimeError("private-delete")
+        with (
+            self.assertLogs(
+                "custom_components.github_copilot", level="WARNING"
+            ) as logs,
+            self.assertRaisesRegex(
+                GitHubCopilotApiClientCommunicationError, "Request timed out"
+            ),
+        ):
+            await self.api.async_send_prompt(context.session_id, "Read the lamp")
+        self.session.disconnect.assert_awaited_once()
+        self.sdk.delete_session.assert_awaited_once_with("sdk-session")
+        text = "\n".join(logs.output)
+        self.assertIn("disconnect", text)
+        self.assertIn("delete", text)
+        self.assertNotIn("private-", text)
+        with self.assertRaisesRegex(GitHubCopilotApiClientError, "not found"):
+            await self.api.async_send_prompt(context.session_id, "Try again")
+
+    async def test_delete_failure_and_timeout_are_independently_bounded(self) -> None:
+        """Successful detach does not turn a failed delete into a success log."""
+
+        async def stuck_delete(_session_id: str) -> None:
+            await asyncio.sleep(0.1)
+
+        for failure in (RuntimeError("private-delete"), stuck_delete):
+            for best_effort in (False, True):
+                with self.subTest(failure=failure, best_effort=best_effort):
+                    context = await self.api.async_create_session()
+                    self.session.disconnect.reset_mock()
+                    self.sdk.delete_session.reset_mock()
+                    self.sdk.delete_session.side_effect = failure
+                    with (
+                        patch(
+                            "custom_components.github_copilot.api._SESSION_DESTROY_TIMEOUT",
+                            0.01,
+                        ),
+                        self.assertLogs(
+                            "custom_components.github_copilot", level="WARNING"
+                        ) as logs,
+                    ):
+                        if best_effort:
+                            await self.api._evict_broken_session(  # noqa: SLF001
+                                context.session_id
+                            )
+                        else:
+                            with self.assertRaises(GitHubCopilotApiClientError):
+                                await self.api.async_end_session(context.session_id)
+                    self.session.disconnect.assert_awaited_once()
+                    self.sdk.delete_session.assert_awaited_once_with("sdk-session")
+                    self.assertIn("delete", "\n".join(logs.output))
+                    self.assertNotIn("private-delete", "\n".join(logs.output))
+                    self.sdk.delete_session.side_effect = None
+
+    async def test_client_close_deletes_after_disconnect_failure(self) -> None:
+        """A failed session detach must not prevent deletion or SDK shutdown."""
+        await self.api.async_create_session()
+        self.session.disconnect.side_effect = RuntimeError("private-disconnect")
+        with self.assertLogs("custom_components.github_copilot", level="ERROR"):
+            await self.api.async_close()
+        self.sdk.delete_session.assert_awaited_once_with("sdk-session")
+        self.sdk.stop.assert_awaited_once()
 
     async def test_sdk_error_is_not_a_success_response(self) -> None:
         """Surface session.error exceptions raised by SDK send_and_wait."""
@@ -538,18 +662,13 @@ class CopilotAPITests(IsolatedAsyncioTestCase):
     async def test_conversation_error_is_reported_as_error(self) -> None:
         """An integration failure must not look like a successful HA action."""
         entity = GitHubCopilotConversationEntity(
-            SimpleNamespace(entry_id="entry", data={})
+            SimpleNamespace(
+                entry_id="entry",
+                data={},
+                runtime_data=SimpleNamespace(client=self.api),
+            )
         )
         result = entity._create_error_result(  # noqa: SLF001
             "en", "conversation", "MCP unavailable"
         )
         self.assertEqual(result.response.response_type.value, "error")
-
-    async def test_mcp_configuration_advertises_control_to_assist(self) -> None:
-        """Avoid Assist's misleading no-home-control warning when MCP is enabled."""
-        for config, expected in (("", 0), ("@/config/mcp.json", 1)):
-            with self.subTest(config=config):
-                entity = GitHubCopilotConversationEntity(
-                    SimpleNamespace(entry_id="entry", data={"mcp_config": config})
-                )
-                self.assertEqual(entity.supported_features, expected)

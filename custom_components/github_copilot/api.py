@@ -8,12 +8,13 @@ import shutil
 import socket
 from contextlib import suppress
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Awaitable, Callable, Sequence
 
     import copilot as copilot  # noqa: PLC0414 — only for type annotations
     from copilot.session import PermissionInvocation, PermissionRequest, ReasoningEffort
@@ -39,7 +40,7 @@ _SDK_INSTALL_HINT = (
     "The official universal wheel supports Home Assistant OS."
 )
 
-# Timeout (seconds) for best-effort session destroy() calls made during error cleanup.
+# Each detach/delete operation gets its own timeout, including normal cleanup.
 _SESSION_DESTROY_TIMEOUT = 5.0
 
 
@@ -127,13 +128,21 @@ class GitHubCopilotApiClient:
         self._mcp_config = mcp_config
         self._reasoning_effort = reasoning_effort
         self._mcp_servers: dict[str, copilot.MCPServerConfig] = {}
+        self._mcp_servers_loaded = False
         self._client: copilot.CopilotClient | None = None
         self._sessions: dict[str, CopilotSessionContext] = {}
         self._session_lock = asyncio.Lock()
         self._client_lock = asyncio.Lock()
 
-    async def _load_mcp_servers(self) -> None:
-        """Load inline or HA-local file configuration outside the event loop."""
+    @property
+    def has_mcp_tools(self) -> bool:
+        """Return whether the loaded configuration authorizes any MCP tools."""
+        return any(server["tools"] for server in self._mcp_servers.values())
+
+    async def async_load_mcp_servers(self) -> None:
+        """Load shared MCP configuration once per integration instance."""
+        if self._mcp_servers_loaded:
+            return
         try:
             self._mcp_servers = await async_load_mcp_config(self._mcp_config)
         except ValueError as exception:
@@ -144,6 +153,7 @@ class GitHubCopilotApiClient:
             )
             LOGGER.error(msg)
             raise GitHubCopilotApiClientError(msg) from exception
+        self._mcp_servers_loaded = True
 
     def _handle_permission_request(
         self,
@@ -279,18 +289,35 @@ class GitHubCopilotApiClient:
             session = self._sessions.pop(session_id, None)
         if not session:
             return
-        try:
-            await session.copilot_session.disconnect()
-            if self._client:
-                await self._client.delete_session(session.session_id)
-        except Exception as exception:  # noqa: BLE001 - SDK error boundary.
-            LOGGER.error(
-                "Failed to close Copilot session (%s).",
-                type(exception).__name__,
-            )
+        if not await self._cleanup_session(session):
             msg = "Unable to clean up Copilot session."
             raise GitHubCopilotApiClientError(msg) from None
         LOGGER.info("Copilot session closed.")
+
+    async def _cleanup_session(
+        self, session: CopilotSessionContext, *, best_effort: bool = False
+    ) -> bool:
+        """Attempt detach and persisted-state deletion independently."""
+        operations: list[tuple[str, Callable[[], Awaitable[None]]]] = [
+            ("disconnect", session.copilot_session.disconnect),
+        ]
+        if self._client:
+            operations.append(
+                ("delete", partial(self._client.delete_session, session.session_id))
+            )
+        succeeded = True
+        log_failure = LOGGER.warning if best_effort else LOGGER.error
+        for operation, cleanup in operations:
+            try:
+                await asyncio.wait_for(cleanup(), timeout=_SESSION_DESTROY_TIMEOUT)
+            except Exception as exception:  # noqa: BLE001 - SDK error boundary.
+                succeeded = False
+                log_failure(
+                    "Failed to close Copilot session during %s (%s).",
+                    operation,
+                    type(exception).__name__,
+                )
+        return succeeded
 
     async def _evict_broken_session(self, session_id: str) -> None:
         """
@@ -298,9 +325,9 @@ class GitHubCopilotApiClient:
 
         Called after a communication failure when the underlying SDK session
         may be in an indeterminate state. The session is popped under the lock
-        to prevent reuse, then a short-timeout destroy() is attempted outside
-        the lock as a best-effort resource cleanup. Any destroy() failures are
-        logged and suppressed so they never surface to the caller.
+        to prevent reuse, then detach and delete are attempted independently
+        outside the lock, each with a short timeout. Failures are logged without
+        replacing the original communication error.
         """
         async with self._session_lock:
             session = self._sessions.pop(session_id, None)
@@ -308,22 +335,7 @@ class GitHubCopilotApiClient:
         if session is None:
             return
 
-        try:
-            await asyncio.wait_for(
-                session.copilot_session.disconnect(),
-                timeout=_SESSION_DESTROY_TIMEOUT,
-            )
-            if self._client:
-                await asyncio.wait_for(
-                    self._client.delete_session(session.session_id),
-                    timeout=_SESSION_DESTROY_TIMEOUT,
-                )
-        except Exception as exc:  # noqa: BLE001
-            LOGGER.warning(
-                "Best-effort cleanup of broken session failed (%s); "
-                "session has already been evicted from the registry.",
-                type(exc).__name__,
-            )
+        await self._cleanup_session(session, best_effort=True)
 
     async def async_send_prompt(self, session_id: str, prompt: str) -> str:
         """Send a prompt to an existing Copilot SDK session."""
@@ -599,7 +611,7 @@ class GitHubCopilotApiClient:
                 )
                 raise GitHubCopilotApiClientError(_SDK_INSTALL_HINT)
 
-            await self._load_mcp_servers()
+            await self.async_load_mcp_servers()
             cli_url = self._client_options.get("cli_url", "").strip()
             mode = "remote bridge" if cli_url else "local runtime"
             LOGGER.info("Connecting to Copilot CLI (%s).", mode)

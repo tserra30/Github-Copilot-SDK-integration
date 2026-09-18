@@ -18,7 +18,7 @@ from .api import (
     GitHubCopilotApiClientError,
     GitHubCopilotApiClientReasoningError,
 )
-from .const import CONF_MCP_CONFIG, LOGGER
+from .const import LOGGER
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -33,6 +33,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up GitHub Copilot conversation platform via config entry."""
     try:
+        await config_entry.runtime_data.client.async_load_mcp_servers()
         agent = GitHubCopilotConversationEntity(config_entry)
         async_add_entities([agent])
         LOGGER.debug("GitHub Copilot conversation entity setup completed")
@@ -56,7 +57,7 @@ class GitHubCopilotConversationEntity(conversation.ConversationEntity):
         self.entry = config_entry
         self._attr_name = "GitHub Copilot"
         self._attr_unique_id = f"{config_entry.entry_id}-conversation"
-        if (config_entry.data.get(CONF_MCP_CONFIG) or "").strip():
+        if config_entry.runtime_data.client.has_mcp_tools:
             self._attr_supported_features = (
                 conversation.ConversationEntityFeature.CONTROL
             )

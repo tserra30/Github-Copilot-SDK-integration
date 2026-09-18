@@ -139,6 +139,8 @@ For authentication/logging changes, verify that startup performs no model-based 
 7. Verify remote mode does not attempt a local runtime download. For local mode, test the SDK-managed runtime when no CLI executable is preinstalled or explicitly configured.
 8. Use `auto` for a new conversation setup. If an older selection such as `gpt-4.1` returns `Model not available`, choose a live supported model through **Configure** and repeat the conversation and entity-state checks.
 
+Verify that empty and deny-all MCP configurations leave the conversation entity's `CONTROL` feature unset, for inline JSON and file references. Named or wildcard tool lists enable it after reload. For session cleanup changes, inject a detach failure or timeout and confirm persisted-state deletion is still attempted; check both normal close and communication-error eviction. Each operation must have its own timeout, and cleanup failures must not hide the original request error or leak SDK payloads.
+
 Record the Home Assistant, SDK, CLI, and add-on versions and the actual results in the PR. Redact credentials and authorization headers from all diagnostic output.
 
 ## Any Contributions You Make Will Be Under the GNU GPLv3
