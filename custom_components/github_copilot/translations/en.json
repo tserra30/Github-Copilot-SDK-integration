@@ -11,9 +11,19 @@
                 },
                 "data_description": {
                     "api_token": "Fine-grained GitHub token with Copilot Requests permission. Not needed with a bridge URL.",
-                    "model": "The AI model to use for conversations",
+                    "model": "The AI model to use for conversations. The next step shows its supported reasoning levels.",
                     "cli_url": "URL of the GitHub Copilot Bridge add-on server. Leave empty to run the CLI locally.",
                     "mcp_config": "JSON containing mcpServers, or a JSON file path readable by Home Assistant. Every server must include a tools list: [] disables tools, named tools restrict access, and [\"*\"] allows all. Selected tools run without confirmation."
+                }
+            },
+            "reasoning": {
+                "title": "Reasoning effort",
+                "description": "Model: **{model}**. Runtime-reported default: **{default_effort}** (`-` means not reported). Only levels supported by this model and the installed SDK are offered. If no explicit levels are available, use Model default.",
+                "data": {
+                    "reasoning_effort": "Reasoning effort"
+                },
+                "data_description": {
+                    "reasoning_effort": "Model default sends no override. Low can reduce latency for routine home control. Unsupported selections are rejected, not silently replaced."
                 }
             }
         },
@@ -23,6 +33,8 @@
             "invalid_url": "Invalid URL. Enter a valid HTTP or HTTPS address for the Copilot Bridge add-on (for example, the add-on hostname on port 8000).",
             "invalid_mcp": "Provide valid mcpServers JSON or a readable Home Assistant JSON file. Every server requires an explicit tools list ([] disables tools). Check server types, URLs, headers, and tool lists.",
             "token_required": "GitHub Token is required when not using the Copilot Bridge add-on.",
+            "unsupported_reasoning_effort": "This model does not support the selected reasoning effort. Choose an offered level or Model default.",
+            "reasoning_metadata_unavailable": "Reasoning capabilities could not be retrieved. Retry, or explicitly choose Model default to leave effort controlled by the runtime.",
             "unknown": "An unexpected error occurred. Please check the Home Assistant logs for details."
         },
         "abort": {
@@ -39,16 +51,41 @@
                     "mcp_config": "MCP configuration"
                 },
                 "data_description": {
-                    "model": "The AI model to use for conversations",
+                    "model": "The AI model to use for conversations. The next step shows its supported reasoning levels.",
                     "cli_url": "URL of the GitHub Copilot Bridge add-on server. Leave empty to run the CLI locally.",
                     "timeout": "Maximum seconds to wait for a Copilot response before timing out. Increase this value for slower models (e.g. o1, o3-mini) or slower connections.",
                     "mcp_config": "JSON containing mcpServers, or a JSON file path readable by Home Assistant. Every server must include a tools list: [] disables tools, named tools restrict access, and [\"*\"] allows all. Selected tools run without confirmation."
                 }
+            },
+            "reasoning": {
+                "title": "Reasoning effort",
+                "description": "Model: **{model}**. Runtime-reported default: **{default_effort}** (`-` means not reported). Only levels supported by this model and the installed SDK are offered. Changes are saved only after this step.",
+                "data": {
+                    "reasoning_effort": "Reasoning effort"
+                },
+                "data_description": {
+                    "reasoning_effort": "Model default removes the override. An existing effort is preserved until you explicitly change it. Low can reduce latency for routine home control."
+                }
             }
         },
         "error": {
+            "auth": "Authentication failed. Check the GitHub token configured for this bridge or local runtime.",
+            "unsupported_reasoning_effort": "This model does not support the selected reasoning effort. Choose an offered level or Model default.",
+            "reasoning_metadata_unavailable": "Reasoning capabilities could not be retrieved. Retry, or explicitly choose Model default to leave effort controlled by the runtime.",
             "invalid_mcp": "Provide valid mcpServers JSON or a readable Home Assistant JSON file. Every server requires an explicit tools list ([] disables tools). Check server types, URLs, headers, and tool lists.",
             "invalid_url": "Enter a valid HTTP or HTTPS bridge URL."
+        }
+    },
+    "selector": {
+        "reasoning_effort": {
+            "options": {
+                "default": "Model default (no override)",
+                "low": "Low",
+                "medium": "Medium",
+                "high": "High",
+                "xhigh": "Extra high",
+                "max": "Maximum"
+            }
         }
     }
 }
