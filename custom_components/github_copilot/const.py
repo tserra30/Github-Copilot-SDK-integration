@@ -13,12 +13,14 @@ CONF_MODEL = "model"
 CONF_CLI_URL = "cli_url"
 CONF_TIMEOUT = "timeout"
 CONF_MCP_CONFIG = "mcp_config"
+CONF_REASONING_EFFORT = "reasoning_effort"
 
 # Default values
 DEFAULT_MODEL = "auto"
 DEFAULT_CLI_URL = ""
 DEFAULT_TIMEOUT = 120
 DEFAULT_MCP_CONFIG = ""
+DEFAULT_REASONING_EFFORT = "default"
 
 # Supported models
 SUPPORTED_MODELS = [

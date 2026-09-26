@@ -566,6 +566,8 @@ http://a1b2c3d4-github-copilot-bridge:8000</code></pre>
         <section id="models">
             <h2>Supported Models</h2>
             <p>New setups default to <code>auto</code>. Open <strong>Settings &rarr; Devices &amp; services &rarr; GitHub Copilot &rarr; Configure</strong> to fetch the runtime's live model catalog and select an available model.</p>
+            <p>Integration <strong>v1.1.0</strong> adds a second <strong>Reasoning effort</strong> step after model selection. Choose <strong>Model default</strong> to send no override, or an advertised SDK-supported level such as <strong>Low</strong> for routine home control. The runtime-reported default is shown when available; no default is guessed. Unsupported saved choices require an explicit correction before saving.</p>
+            <p>Effort is passed through SDK sessions in both local and bridge modes, not through MCP configuration or add-on options. Models without advertised effort support offer only Model default. See the <a href="https://github.com/tserra30/Github-Copilot-SDK-integration/blob/main/README.md#reasoning-effort">reasoning guide</a>.</p>
             <p>Existing selections are not silently replaced on upgrade. If an older ID such as <code>gpt-4.1</code> produces <strong>Model not available</strong>, choose a currently supported model through <strong>Configure</strong>.</p>
         </section>
 
