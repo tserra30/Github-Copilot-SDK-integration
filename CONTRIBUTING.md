@@ -106,6 +106,8 @@ python -m ruff format .
 - Follow Home Assistant's config flow patterns
 - Default new configurations to `auto`; preserve existing model selections without silent migration
 - Permit custom model IDs during setup and fetch live available model IDs for the options selector
+- Select reasoning effort in a second step using the selected model's advertised capabilities and the pinned SDK's supported levels. Preserve missing/default overrides; revalidate explicit values before creating sessions.
+- Metadata clients must close before rendering a form, so abandoned setup/options flows do not leave CLI clients running. Validate against candidate connection settings, not a previous bridge's catalog.
 
 ## Testing
 
@@ -116,6 +118,7 @@ Before submitting a PR:
 3. Test setup and options flows in a Home Assistant instance
 4. Test conversation agent functionality and error handling
 5. Verify new configurations default to `auto`, existing model selections remain unchanged, and **Configure** offers live supported model IDs
+6. Verify the reasoning step preserves supported saved choices, rejects incompatible model/effort pairs, allows Model default without metadata, and saves only after confirmation. Check both local and remote SDK sessions, reload persistence, and that default effort is omitted on the wire.
 
 ### Manual Home Assistant MCP Check
 
