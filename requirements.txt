@@ -4,6 +4,6 @@ github-copilot-sdk==1.0.33
 homeassistant==2024.12.3
 # Conversation component dependencies (not included in Home Assistant's core wheel)
 hassil==3.12.1
-home-assistant-intents==2026.10.6
+home-assistant-intents==2026.10.27
 pip>=26.3
 ruff==0.17.5
