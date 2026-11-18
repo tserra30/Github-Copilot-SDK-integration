@@ -97,6 +97,7 @@ Verify actual entity state changes, not just model text claiming success. Check 
 - Keep the GitHub token optional for remote bridge connections
 - Default new model selections to `auto`; preserve existing saved selections without silent migration
 - Allow custom model IDs during setup and fetch live available model IDs for the options selector
+- Reasoning selection follows model/connection selection in a second step. Offer only advertised SDK-supported levels; leave defaults unset, preserve saved choices, and validate explicit overrides again before session creation.
 - For an obsolete ID rejected with `Model not available` (for example `gpt-4.1`), direct users to choose a supported model through **Configure** instead of silently changing their choice
 
 ### Bridge Add-on (`addon/`)

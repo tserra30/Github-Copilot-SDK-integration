@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Sequence
 
     import copilot as copilot  # noqa: PLC0414 — only for type annotations
-    from copilot.session import PermissionInvocation, PermissionRequest
+    from copilot.session import PermissionInvocation, PermissionRequest, ReasoningEffort
 
 try:
     import copilot  # type: ignore[no-redef]
@@ -28,6 +28,11 @@ except ImportError:
 
 from .const import DEFAULT_MODEL, LOGGER
 from .mcp import async_load_mcp_config
+from .reasoning import (
+    ReasoningCapabilities,
+    get_reasoning_capabilities,
+    is_reasoning_effort,
+)
 
 _SDK_INSTALL_HINT = (
     "The github-copilot-sdk package is required but is not installed. "
@@ -53,6 +58,10 @@ class GitHubCopilotApiClientAuthenticationError(
     GitHubCopilotApiClientError,
 ):
     """Exception to indicate an authentication error."""
+
+
+class GitHubCopilotApiClientReasoningError(GitHubCopilotApiClientError):
+    """Exception for an effort override not supported by the selected model."""
 
 
 @dataclass
@@ -110,12 +119,14 @@ class GitHubCopilotApiClient:
         client_options: dict[str, Any] | None = None,
         timeout: float = 120.0,
         mcp_config: str = "",
+        reasoning_effort: str | None = None,
     ) -> None:
         """Initialize GitHub Copilot SDK client wrapper."""
         self._model = model
         self._client_options = client_options or {}
         self._timeout = timeout
         self._mcp_config = mcp_config
+        self._reasoning_effort = reasoning_effort
         self._mcp_servers: dict[str, copilot.MCPServerConfig] = {}
         self._mcp_servers_loaded = False
         self._client: copilot.CopilotClient | None = None
@@ -202,9 +213,13 @@ class GitHubCopilotApiClient:
         """Create a Copilot SDK session."""
         async with self._session_lock:
             client = await self._ensure_client()
+            reasoning_effort = await self.async_validate_reasoning_effort(
+                self._reasoning_effort
+            )
             try:
                 copilot_session = await client.create_session(
                     model=self._model,
+                    reasoning_effort=reasoning_effort,
                     streaming=False,
                     mcp_servers=self._mcp_servers,
                     on_permission_request=self._handle_permission_request,
@@ -261,6 +276,10 @@ class GitHubCopilotApiClient:
                 "(requested model=%s, configured MCP servers=%d).",
                 self._model,
                 len(self._mcp_servers),
+            )
+            LOGGER.info(
+                "Copilot reasoning effort: %s.",
+                reasoning_effort if reasoning_effort is not None else "model default",
             )
             return session_context
 
@@ -783,6 +802,10 @@ class GitHubCopilotApiClient:
 
     async def async_available_models(self) -> Sequence[str]:
         """Return available model IDs from the Copilot SDK."""
+        return [model.id for model in await self.async_model_catalog()]
+
+    async def async_model_catalog(self) -> Sequence[copilot.ModelInfo]:
+        """Return the live model metadata, including supported reasoning levels."""
         client = await self._ensure_client()
         try:
             models = await client.list_models()
@@ -793,4 +816,37 @@ class GitHubCopilotApiClient:
             )
             msg = "Unable to fetch Copilot models."
             raise GitHubCopilotApiClientCommunicationError(msg) from None
-        return [model.id for model in models]
+        return models
+
+    async def async_reasoning_capabilities(self) -> ReasoningCapabilities:
+        """Return the selected model's advertised reasoning capabilities."""
+        return get_reasoning_capabilities(await self.async_model_catalog(), self._model)
+
+    async def async_validate_reasoning_effort(
+        self, effort: str | None
+    ) -> ReasoningEffort | None:
+        """Validate explicit overrides before sessions; defaults need no metadata."""
+        if effort is None:
+            return None
+        if not is_reasoning_effort(effort):
+            msg = (
+                "Invalid reasoning effort. Choose a supported value through Configure."
+            )
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientReasoningError(msg)
+        capabilities = await self.async_reasoning_capabilities()
+        if not capabilities.known:
+            msg = (
+                "Reasoning capabilities are unavailable for the selected model. "
+                "Retry or choose Model default through Configure."
+            )
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientReasoningError(msg)
+        if effort not in capabilities.supported_efforts:
+            msg = (
+                "The selected model does not support the configured reasoning effort. "
+                "Choose a supported level or Model default through Configure."
+            )
+            LOGGER.error(msg)
+            raise GitHubCopilotApiClientReasoningError(msg)
+        return effort

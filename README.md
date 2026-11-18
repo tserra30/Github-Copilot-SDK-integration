@@ -98,6 +98,20 @@ For example: `http://a1b2c3d4-github-copilot-bridge:8000`
 
 After setup, adjust settings through **Settings** → **Devices & Services** → **GitHub Copilot** → **Configure**. **Response timeout** defaults to 120 seconds (range: 10–600 seconds); increase it for reasoning-heavy models or high-latency connections.
 
+### Reasoning Effort
+
+Starting with integration **v1.1.0**, setup and **Configure** use two steps: first choose the model and connection/MCP settings, then choose **Reasoning effort** for that model. Options are saved only when the second step is submitted.
+
+- **Model default (no override)** preserves the runtime's own behavior. Existing installations keep this behavior without a migration or an automatic switch to Low.
+- **Low** is a useful latency-focused choice for routine device control when the selected model advertises it.
+- Other explicit choices are the intersection of the selected model's advertised levels and the pinned SDK's supported API values (`low`, `medium`, `high`, `xhigh`, `max`). There is no universal default across models; the second step displays a runtime-reported default when available, or `-` when it is not reported.
+
+Models without advertised reasoning support offer only **Model default**. This currently includes `auto` in the tested runtime: select a specific model that supports Low if you want to control effort. Unknown/custom-model metadata is not treated as permission to force a level. If metadata cannot be fetched, retry or explicitly choose Model default; no override is guessed.
+
+A saved override is preserved when you reopen options. If changing models makes it unsupported, it remains visible with an error until you choose a supported level or Model default. New sessions revalidate explicit overrides; unsupported values are not silently downgraded. Choosing Model default removes the saved override and omits the SDK's wire-level `reasoningEffort` setting.
+
+The setting applies to **both local and bridge modes** through SDK sessions. It does not belong in MCP JSON or the bridge add-on options, and the response timeout is a separate limit. The existing bridge/SDK versions remain compatible; no add-on change is required for this feature.
+
 **Upgrading an existing installation?** Saved model selections are preserved, not silently replaced with `auto`. Open **Configure** to fetch the runtime's available model IDs and select a supported model. An older saved ID can become unavailable even if it worked before the SDK/CLI upgrade.
 
 > **Tip for Home Assistant OS users**: Install the bridge and enter its URL in the "Copilot CLI URL" field. No manual CLI installation in the Core container is needed.
